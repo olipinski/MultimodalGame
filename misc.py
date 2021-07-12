@@ -1,3 +1,4 @@
+import h5py
 import torch
 from torch.autograd import Variable
 import numpy as np
@@ -5,7 +6,7 @@ import datetime
 import os
 import sys
 import json
-import h5py
+# import h5py
 import random
 from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
@@ -18,12 +19,10 @@ try:
 except:
     pass
 
-
 FORMAT = '[%(asctime)s %(levelname)s] %(message)s'
 logging.basicConfig(format=FORMAT)
 debuglogger = logging.getLogger('main_logger')
 debuglogger.setLevel('DEBUG')
-
 
 """
 Notes
@@ -36,8 +35,9 @@ Description File should be in the CSV format,
 
 Concretely,
 
-    3,aardvark,nocturnal burrowing mammal of the grasslands of Africa that feeds on termites; sole extant representative of the order Tubulidentata
-    11,armadillo,burrowing chiefly nocturnal mammal with body covered with strong horny plates
+    3,aardvark,nocturnal burrowing mammal of the grasslands of Africa that feeds on termites; sole extant 
+    representative of the order Tubulidentata 11,armadillo,burrowing chiefly nocturnal mammal with body covered with 
+    strong horny plates 
 
 Note that the label_id need not be ordered nor within any predefined range. Should simply match
 the "Target" attribute of the data.hdf5. Once the dataset has been loaded, the label_ids will be
@@ -219,7 +219,7 @@ class FileLogger(object):
     def LogJSON(self, message_obj, level=INFO):
         if self.json_log_path and level >= self.min_file_level:
             with open(self.json_log_path, 'w') as f:
-                print >>f, json.dumps(message_obj)
+                print >> f, json.dumps(message_obj)
         else:
             sys.stderr.write('WARNING: No JSON log filename.')
 
@@ -312,7 +312,6 @@ def load_hdf5(hdf5_file, batch_size, random_seed, shuffle, truncate_final_batch=
             num_batches = num_batches + 1
 
     for i in range(num_batches):
-
         batch_indices = sorted(order[i * batch_size:(i + 1) * batch_size])
 
         f = h5py.File(os.path.expanduser(hdf5_file), "r")
@@ -377,13 +376,13 @@ def cbow(descr, word_dict):
 
 # Function computing CBOW for each set of descriptions
 def cbow_general(texts, word2id, id2word):
-    '''Takes a batch of n texts per example. Each example is a list of ints corresponding to a textual description of the image
+    """Takes a batch of n texts per example. Each example is a list of ints corresponding to a textual description of the image
     Returns: two tensors.
                 1. cbow vector for each example
                     size: batch_size x desc_per_elem x embedding_dim
                 2. individual word vectors for each example
                     size: batch_size x desc_per_elem x max_description_length x embedding_dim
-                    sentences shorter than max_length are 0 padded at the end'''
+                    sentences shorter than max_length are 0 padded at the end"""
     emb_size = len(list(word2id.values())[1]["emb"])
     desc_per_eg = len(texts[0])
     max_len = max([max([len(e) for e in t]) for t in texts])  # max length of sentence
@@ -407,51 +406,6 @@ def cbow_general(texts, word2id, id2word):
     return desc_cbow, desc_set, desc_set_lens
 
 
-"""
-Initialization Schemes
-Source: https://github.com/alykhantejani/nninit/blob/master/nninit.py
-"""
-
-
-def _calculate_fan_in_and_fan_out(tensor):
-    if tensor.ndimension() < 2:
-        raise ValueError(
-            "fan in and fan out can not be computed for tensor of size ", tensor.size())
-
-    if tensor.ndimension() == 2:  # Linear
-        fan_in = tensor.size(1)
-        fan_out = tensor.size(0)
-    else:
-        num_input_fmaps = tensor.size(1)
-        num_output_fmaps = tensor.size(0)
-        receptive_field_size = np.prod(tensor.numpy().shape[2:])
-        fan_in = num_input_fmaps * receptive_field_size
-        fan_out = num_output_fmaps * receptive_field_size
-
-    return fan_in, fan_out
-
-
-def xavier_normal(tensor, gain=1):
-    """Fills the input Tensor or Variable with values according to the method described in "Understanding the difficulty of training
-       deep feedforward neural networks" - Glorot, X. and Bengio, Y., using a normal distribution.
-       The resulting tensor will have values sampled from normal distribution with mean=0 and
-       std = gain * sqrt(2/(fan_in + fan_out))
-    Args:
-        tensor: a n-dimension torch.Tensor
-        gain: an optional scaling factor to be applied
-    Examples:
-        >>> w = torch.Tensor(3, 5)
-        >>> nninit.xavier_normal(w, gain=np.sqrt(2.0))
-    """
-    if isinstance(tensor, Variable):
-        xavier_normal(tensor.data, gain=gain)
-        return tensor
-    else:
-        fan_in, fan_out = _calculate_fan_in_and_fan_out(tensor)
-        std = gain * np.sqrt(2.0 / (fan_in + fan_out))
-        return tensor.normal_(0, std)
-
-
 def build_mask(region_str, size):
     # Read input string
     regions = region_str.split(',')
@@ -473,31 +427,15 @@ def log2(p):
     return torch.log(p) / torch.log(torch.zeros(1).fill_(2))
 
 
-def check_entropy():
-    '''Checksthe entropy of a number of 8-d binary variables'''
-    p = torch.zeros(8)
-    print(f'Entropy of {p} is {calculate_entropy(p)}')
-    p = torch.ones(8)
-    print(f'Entropy of {p} is {calculate_entropy(p)}')
-    p = torch.zeros(8).fill_(0.5)
-    print(f'Entropy of {p} is {calculate_entropy(p)}')
-    p = torch.zeros(8).fill_(0.2)
-    print(f'Entropy of {p} is {calculate_entropy(p)}')
-    p = torch.zeros(8).fill_(0.5)
-    p[0] = 0.2
-    p[1] = 0.2
-    print(f'Entropy of {p} is {calculate_entropy(p)}')
-
-
 def calculate_entropy(p):
-    ''' Calculates the entropy of an n-dimensional binary variable'''
-    H = - (log2(p + 1e-8) * p).sum() - (log2(1 - p + 1e-8) * (1 - p)).sum()
-    #H = - (log2(p) * p).sum() - (log2(1 - p) * (1 - p)).sum()
-    if np.isnan(H):
-        debuglogger.warn(f'NAN entropy for {p}')
+    """ Calculates the entropy of an n-dimensional binary variable"""
+    h = - (log2(p + 1e-8) * p).sum() - (log2(1 - p + 1e-8) * (1 - p)).sum()
+    # H = - (log2(p) * p).sum() - (log2(1 - p) * (1 - p)).sum()
+    if np.isnan(h):
+        debuglogger.warning(f'NAN entropy for {p}')
         return torch.zeros(1)
     else:
-        return H
+        return h
 
 
 def _create_master_list(lists):
@@ -511,7 +449,7 @@ def _create_master_list(lists):
 def calculate_average_message(message_lists):
     master_list = _create_master_list(message_lists)
     if len(master_list) == 0:
-        debuglogger.warn(f'EMPTY LIST')
+        debuglogger.warning(f'EMPTY LIST')
         return None
     master_list = torch.stack(master_list)
     avg_msg = master_list.mean(dim=0)
@@ -522,7 +460,7 @@ def calculate_average_message(message_lists):
 def calculate_average_entropy(entropy_lists):
     master_list = _create_master_list(entropy_lists)
     if len(master_list) == 0:
-        debuglogger.warn(f'EMPTY LIST')
+        debuglogger.warning(f'EMPTY LIST')
         return None
     avg_ent = sum(master_list) / len(master_list)
     print(f'master list: {len(master_list)}, avg_ent: {avg_ent}')
@@ -535,4 +473,3 @@ def count_distinct_messages(message_lists):
     master_list = list(set(master_list))
     distinct_msgs = len(master_list)
     return total_msgs, distinct_msgs
-    

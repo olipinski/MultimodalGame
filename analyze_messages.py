@@ -8,13 +8,13 @@ import math
 import sys
 
 
-SHAPES = ['circle', 'cross', 'ellipse', 'pentagon', 'rectangle', 'semicircle', 'square', 'triangle']
-COLORS = ['blue', 'cyan', 'gray', 'green', 'magenta', 'red', 'yellow']
+COLOURS = ('red', 'green', 'blue', 'yellow', 'magenta', 'cyan')
+SHAPES = ('square', 'rectangle', 'triangle', 'pentagon', 'cross', 'circle')
 OUTOFDOMAIN = [('square', 'red'), ('triangle', 'green'), ('circle', 'blue'), ('rectangle', 'yellow'), ('cross', 'magenta'), ('ellipse', 'cyan')]
 
 
 def convert_tensor_to_string(message):
-    '''Converts binary message stored in a pytorch tensor to a string'''
+    """Converts binary message stored in a pytorch tensor to a string"""
     assert message.dim() == 1
     m_len = message.size(0)
     m_str = ""
@@ -24,7 +24,7 @@ def convert_tensor_to_string(message):
 
 
 def add_elem(m_dict, message, shape, color, answer_type):
-    '''General'''
+    """General"""
     m_dict['total'] += 1
     m_dict[answer_type] += 1
     if message not in m_dict:
@@ -80,12 +80,12 @@ def calc_ratios(m_dict):
                 if s in shape_dict:
                     shape_dict[s + '_p'] = shape_dict[s] / stats['total']
             color_dict = stats['color']
-            for c in COLORS:
+            for c in COLOURS:
                 if c in color_dict:
                     color_dict[c + '_p'] = color_dict[c] / stats['total']
             shape_color_dict = stats['shape_color']
             for s in SHAPES:
-                for c in COLORS:
+                for c in COLOURS:
                     sc = s + '_' + c
                     if sc in shape_color_dict:
                         shape_color_dict[sc + '_p'] = shape_color_dict[sc] / stats['total']
@@ -107,7 +107,7 @@ def count_pratios(m_dict):
             pratios = []
             shape_color_dict = stats['shape_color']
             for s in SHAPES:
-                for c in COLORS:
+                for c in COLOURS:
                     sc = s + '_' + c
                     if sc in shape_color_dict:
                         pratios.append((shape_color_dict[sc], shape_color_dict[sc + '_log_pratio']))

@@ -9,7 +9,8 @@ import numpy as np
 import logging
 import functools
 
-from misc import xavier_normal
+from torchinfo import summary
+
 
 FORMAT = '[%(asctime)s %(levelname)s] %(message)s'
 logging.basicConfig(format=FORMAT)
@@ -17,179 +18,133 @@ debuglogger = logging.getLogger('main_logger')
 debuglogger.setLevel('INFO')
 
 
-def reset_parameters_util(model):
+def reset_parameters_util_x(model):
     for m in model.modules():
         if isinstance(m, nn.Linear):
-            m.weight.data.set_(xavier_normal(m.weight.data))
+            nn.init.xavier_normal_(m.weight.data, 1)
             if m.bias is not None:
                 m.bias.data.zero_()
         elif isinstance(m, nn.GRUCell):
             for mm in m.parameters():
                 if mm.data.ndimension() == 2:
-                    mm.data.set_(xavier_normal(mm.data))
+                    nn.init.xavier_normal_(mm.data, 1)
                 elif mm.data.ndimension() == 1:  # Bias
                     mm.data.zero_()
 
 
-class ImageProcessor(nn.Module):
-    '''Processes an agent's image, with or without attention'''
-
-    def __init__(self, im_feat_dim, hid_dim, use_attn, attn_dim):
-        super(ImageProcessor, self).__init__()
-        self.im_feat_dim = im_feat_dim
-        self.hid_dim = hid_dim
-        self.use_attn = use_attn
-        self.attn_dim = attn_dim
-        self.im_transform = nn.Linear(self.im_feat_dim, self.hid_dim)
-        self.attn_W_x = nn.Linear(self.im_feat_dim, self.attn_dim)
-        self.attn_W_w = nn.Linear(self.hid_dim, self.attn_dim)
-        self.attn_U = nn.Linear(self.attn_dim, 1)
-        self.attn_scores = []
-        self.reset_parameters()
-
-    def reset_parameters(self):
-        reset_parameters_util(self)
-
-    def reset_state(self):
-        # Used for debugging.
-        self.attn_scores = []
-
-    def get_attn_scores(self, x, h_z):
-        batch_size, n_feats, channels = x.size()
-        # Process hidden state
-        h_w_attn = self.attn_W_w(h_z)
-        debuglogger.debug(f'h_w_attn: {h_w_attn.size()}')
-        h_w_attn_broadcast = h_w_attn.contiguous().unsqueeze(
-            1).expand(batch_size, n_feats, self.attn_dim)
-        debuglogger.debug(f'h_w_broadcast: {h_w_broadcast.size()}')
-        h_w_attn_flat = h_w_attn_broadcast.contiguous().view(
-            batch_size * n_feats, self.attn_dim)
-        debuglogger.debug(f'h_w_flat: {h_w_flat.size()}')
-        # Process image
-        x_flat = x.contiguous().view(batch_size * n_feats, channels)
-        debuglogger.debug(f'x_flat: {x_flat.size()}')
-        h_x_attn_flat = self.attn_W_x(x_flat)
-        debuglogger.debug(f'h_x_attn_flat: {h_x_attn_flat.size()}')
-        # Calculate attention scores
-        attn_U_inp = nn.Tanh()(h_w_attn_flat + h_x_attn_flat)
-        attn_scores_flat = self.attn_U(attn_U_inp)
-        debuglogger.debug(f'attn_scores_flat: {attn_scores_flat.size()}')
-        attn_scores = attn_scores_flat.view(batch_size, n_feats)
-        debuglogger.debug(f'attn_scores: {attn_scores.size()}')
-
-        return attn_scores
-
-    def forward(self, x, h_z, t):
-        '''
-        x = x or image_attn(x)
-            Image Attention (https://arxiv.org/pdf/1502.03044.pdf):
-                \beta_i = U tanh(W_r h_z + W_x x_i)
-                \alpha = 1 / |x|        if t == 0
-                \alpha = softmax(\beta) otherwise
-                x = \sum_i \alpha x_i
-        Returns
-            h_i = im_transform(x)
-        '''
-        debuglogger.debug(f'Inside image processing...')
-        if self.use_attn:
-            batch_size, channels, height, width = x.size()
-            n_feats = height * width
-            debuglogger.debug(f'x: {x.size()}')
-            x = x.view(batch_size, channels, n_feats)
-            debuglogger.debug(f'x: {x.size()}')
-            x = x.transpose(1, 2)
-            debuglogger.debug(f'x: {x.size()}')
-            attn_scores = self.get_attn_scores(x, h_z)
-            # attention scores
-            if t == 0:
-                attn_scores = Variable(torch.FloatTensor(
-                    batch_size, n_feats).fill_(1), volatile=not self.training)
-                attn_scores = attn_scores / n_feats
-            else:
-                attn_scores = F.softmax(attn_scores, dim=1)
-            debuglogger.debug(f'attn_scores: {attn_scores.size()}')
-            debuglogger.debug(f'attn_scores: {attn_scores}')
-            x_attn = torch.bmm(attn_scores.unsqueeze(1), x).squeeze()
-            debuglogger.debug(f'x with attn: {x_attn.size()}')
-            # Cache values for inspection
-            self.attn_scores.append(attn_scores)
-
-            _x = x_attn
-        else:
-            _x = x
-        # Transform image to hid_dim shape
-        h_i = F.relu(self.im_transform(_x))
-        return h_i
+def reset_parameters_util_h(model):
+    for m in model.modules():
+        if isinstance(m, nn.Linear):
+            nn.init.nn.init.kaiming_normal_(m.weight.data, 1)
+            if m.bias is not None:
+                m.bias.data.zero_()
+        elif isinstance(m, nn.GRUCell):
+            for mm in m.parameters():
+                if mm.data.ndimension() == 2:
+                    nn.init.nn.init.kaiming_normal_(mm.data, 1)
+                elif mm.data.ndimension() == 1:  # Bias
+                    mm.data.zero_()
 
 
-class ImageProcessorFromScratch(nn.Module):
-    '''Processes an agent's image, with or without attention'''
+class CapsConvLayer(nn.Module):
+    def __init__(self, in_channels=3, out_channels=256, kernel_size=9):
+        super(CapsConvLayer, self).__init__()
+        self.conv = nn.Conv2d(in_channels=in_channels,
+                              out_channels=out_channels,
+                              kernel_size=kernel_size,
+                              stride=1
+                              )
 
-    def __init__(self, im_dim, hid_dim, use_attn, attn_dim, dropout):
-        super(ImageProcessorFromScratch, self).__init__()
-        self.im_dim = (3, im_dim, im_dim)
-        self.hid_dim = hid_dim
-        self.use_attn = use_attn
-        self.attn_dim = attn_dim
-        self.dropout = dropout
-        self.model = self.build_model()
-        self.attn_scores = []
-        self.reset_parameters()
+    def forward(self, x):
+        x = self.conv(x)
+        x = F.relu(x)
+        return x
 
-    def build_model(self):
-        layers = []
-        layers += [nn.Conv2d(3, 16, kernel_size=3, stride=2)]
-        layers += [nn.BatchNorm2d(16)]
-        layers += [nn.ReLU(inplace=True)]
-        layers += [nn.Conv2d(16, 32, kernel_size=3, stride=2)]
-        layers += [nn.BatchNorm2d(32)]
-        layers += [nn.ReLU(inplace=True)]
-        layers += [nn.Dropout2d(p=self.dropout)]
-        layers += [nn.Conv2d(32, 32, kernel_size=3, stride=2)]
-        layers += [nn.BatchNorm2d(32)]
-        layers += [nn.ReLU(inplace=True)]
-        layers += [nn.Conv2d(32, 64, kernel_size=3, stride=2)]
-        layers += [nn.BatchNorm2d(64)]
-        layers += [nn.ReLU(inplace=True)]
-        layers += [nn.Dropout2d(p=self.dropout)]
-        layers += [nn.Conv2d(64, self.hid_dim, kernel_size=3, stride=2)]
-        return nn.Sequential(*layers)
 
-    def reset_parameters(self):
-        reset_parameters_util(self)
+class CapsPrimaryLayer(nn.Module):
+    def __init__(self, num_capsules=8, in_channels=256, out_channels=32, kernel_size=9):
+        super(CapsPrimaryLayer, self).__init__()
+        self.capsules = nn.ModuleList([
+            nn.Conv2d(in_channels=in_channels, out_channels=out_channels, kernel_size=kernel_size, stride=2, padding=0)
+            for _ in range(num_capsules)])
 
-    def reset_state(self):
-        # Used for debugging.
-        self.attn_scores = []
+    def squash(self, input_tensor):
+        squared_norm = (input_tensor ** 2).sum(-1, keepdim=True)
+        output_tensor = squared_norm * input_tensor / ((1. + squared_norm) * torch.sqrt(squared_norm))
+        return output_tensor
 
-    def forward(self, x, h_z, t):
-        '''
-        x = x or image_attn(x)
-            Image Attention (https://arxiv.org/pdf/1502.03044.pdf):
-                \beta_i = U tanh(W_r h_z + W_x x_i)
-                \alpha = 1 / |x|        if t == 0
-                \alpha = softmax(\beta) otherwise
-                x = \sum_i \alpha x_i
-        Returns
-            h_i = im_transform(x)
-        '''
-        debuglogger.debug(f'Inside image processing...')
+    def forward(self, x):
+        u = [capsule(x) for capsule in self.capsules]
+        u = torch.stack(u, dim=1)
+        u = u.view(x.size(0), 32 * 6 * 6, -1)
+        return self.squash(u)
+
+
+class CapsShapeLayer(nn.Module):
+    def __init__(self, num_capsules=10, num_routes=32 * 6 * 6, in_channels=8, out_channels=16, cuda=False):
+        super(CapsShapeLayer, self).__init__()
+        self.in_channels = in_channels
+        self.num_routes = num_routes
+        self.num_capsules = num_capsules
+        self.use_cuda = cuda
+
+        self.W = nn.Parameter(torch.randn(1, num_routes, num_capsules, out_channels, in_channels))
+
+    def squash(self, input_tensor):
+        squared_norm = (input_tensor ** 2).sum(-1, keepdim=True)
+        output_tensor = squared_norm * input_tensor / ((1. + squared_norm) * torch.sqrt(squared_norm))
+        return output_tensor
+
+    def forward(self, x):
         batch_size = x.size(0)
-        if self.use_attn:
-            debuglogger.warn(f'Not implemented yet')
-            sys.exit()
-        else:
-            _x = x
-        _x = self.model(_x)
-        h, w = _x.size(2), _x.size(3)
-        _x = nn.functional.avg_pool2d(_x, (h, w))
-        _x = _x.view(batch_size, -1)
-        h_i = F.relu(_x)
-        return h_i
+        x = torch.stack([x] * self.num_capsules, dim=2).unsqueeze(4)
+
+        W = torch.cat([self.W] * batch_size, dim=0)
+        u_hat = torch.matmul(W, x)
+
+        b_ij = _Variable(torch.zeros(1, self.num_routes, self.num_capsules, 1))
+        if self.use_cuda:
+            b_ij = b_ij.cuda()
+
+        num_iterations = 3
+        for iteration in range(num_iterations):
+            c_ij = F.softmax(b_ij)
+            c_ij = torch.cat([c_ij] * batch_size, dim=0).unsqueeze(4)
+
+            s_j = (c_ij * u_hat).sum(dim=1, keepdim=True)
+            v_j = self.squash(s_j)
+
+            if iteration < num_iterations - 1:
+                a_ij = torch.matmul(u_hat.transpose(3, 4), torch.cat([v_j] * self.num_routes, dim=1))
+                b_ij = b_ij + a_ij.squeeze(4).mean(dim=0, keepdim=True)
+
+        return v_j.squeeze(1)
+
+
+class ImageProcessor(nn.Module):
+    """Processes an agent's image, with or without attention"""
+
+    def __init__(self, num_capsules_l1, num_capsules_l2, cuda):
+        super(ImageProcessor, self).__init__()
+        self.use_cuda = cuda
+        self.reset_parameters()
+        self.capsConvLayer = CapsConvLayer()
+        self.capsPrimaryLayer = CapsPrimaryLayer(num_capsules=num_capsules_l1)
+        self.capsShapeLayer = CapsShapeLayer(num_capsules=num_capsules_l2, cuda=True)
+
+    def reset_parameters(self):
+        reset_parameters_util_h(self)
+
+    def forward(self, x):
+        debuglogger.debug(f'Inside image processing...')
+        x = self.capsConvLayer(x)
+        x = self.capsPrimaryLayer(x)
+        x = self.capsShapeLayer(x)
+        return x
 
 
 class TextProcessor(nn.Module):
-    '''Processes sentence representations to the correct hidden dimension'''
+    """Processes sentence representations to the correct hidden dimension"""
 
     def __init__(self, desc_dim, hid_dim):
         super(TextProcessor, self).__init__()
@@ -199,7 +154,7 @@ class TextProcessor(nn.Module):
         self.reset_parameters()
 
     def reset_parameters(self):
-        reset_parameters_util(self)
+        reset_parameters_util_x(self)
 
     def forward(self, desc):
         bs, num_classes, desc_dim = desc.size()
@@ -210,7 +165,7 @@ class TextProcessor(nn.Module):
 
 
 class MessageProcessor(nn.Module):
-    '''Processes a received message from an agent'''
+    """Processes a received message from an agent"""
 
     def __init__(self, m_dim, hid_dim, cuda):
         super(MessageProcessor, self).__init__()
@@ -221,7 +176,7 @@ class MessageProcessor(nn.Module):
         self.reset_parameters()
 
     def reset_parameters(self):
-        reset_parameters_util(self)
+        reset_parameters_util_x(self)
 
     def forward(self, m, h, use_message):
         if use_message:
@@ -236,8 +191,8 @@ class MessageProcessor(nn.Module):
 
 
 class MessageGenerator(nn.Module):
-    '''Generates a message for an agent
-    TODO MAKE RECURRENT? - later'''
+    """Generates a message for an agent
+    TODO MAKE RECURRENT? - later"""
 
     def __init__(self, m_dim, hid_dim, use_binary):
         super(MessageGenerator, self).__init__()
@@ -251,14 +206,14 @@ class MessageGenerator(nn.Module):
         self.reset_parameters()
 
     def reset_parameters(self):
-        reset_parameters_util(self)
+        reset_parameters_util_x(self)
 
     def forward(self, y_scores, h_c, desc, training):
-        '''
+        """
             desc = \sum_i y_scores desc_i
             w_hat = tanh(W_h h_c + W_d desc)
             w = bernoulli(sig(w_hat)) or round(sig(w_hat))
-        '''
+        """
         # y_scores: batch_size x num_classes
         # desc: batch_size x num_classes x hid_dim
         # h_c: batch_size x hid_dim
@@ -299,7 +254,7 @@ class MessageGenerator(nn.Module):
 
 
 class RewardEstimator(nn.Module):
-    '''Estimates the reward the agent will receieved. Value used as a baseline in REINFORCE loss'''
+    """Estimates the reward the agent will receive. Value used as a baseline in REINFORCE loss"""
 
     def __init__(self, hid_dim):
         super(RewardEstimator, self).__init__()
@@ -309,7 +264,7 @@ class RewardEstimator(nn.Module):
         self.reset_parameters()
 
     def reset_parameters(self):
-        reset_parameters_util(self)
+        reset_parameters_util_x(self)
 
     def forward(self, x):
         # Detach input from rest of graph - only want gradients to flow through the RewardEstimator and no further
@@ -329,12 +284,11 @@ class Agent(nn.Module):
                  num_classes,
                  s_dim,
                  use_binary,
-                 use_attn,
-                 attn_dim,
                  use_MLP,
                  cuda,
-                 im_from_scratch,
-                 dropout):
+                 num_capsules_l1,
+                 num_capsules_l2
+                 ):
         super(Agent, self).__init__()
         self.im_feature_type = im_feature_type
         self.im_feat_dim = im_feat_dim
@@ -344,16 +298,11 @@ class Agent(nn.Module):
         self.num_classes = num_classes
         self.s_dim = s_dim
         self.use_binary = use_binary
-        self.use_attn = use_attn
         self.use_MLP = use_MLP
-        self.attn_dim = attn_dim
         self.use_cuda = cuda
-        if im_from_scratch:
-            self.image_processor = ImageProcessorFromScratch(
-                im_feat_dim, h_dim, use_attn, attn_dim, dropout)
-        else:
-            self.image_processor = ImageProcessor(
-                im_feat_dim, h_dim, use_attn, attn_dim)
+        self.num_capsules_l1 = num_capsules_l1
+        self.num_capsules_l2 = num_capsules_l2
+        self.image_processor = ImageProcessor(num_capsules_l1, num_capsules_l2, cuda)
         self.text_processor = TextProcessor(desc_dim, h_dim)
         self.message_processor = MessageProcessor(m_dim, h_dim, cuda)
         self.message_generator = MessageGenerator(m_dim, h_dim, use_binary)
@@ -371,7 +320,7 @@ class Agent(nn.Module):
     def reset_parameters(self):
         for m in self.modules():
             if isinstance(m, nn.Linear):
-                m.weight.data.set_(xavier_normal(m.weight.data))
+                nn.init.xavier_normal_(m.weight.data, 1)
                 if m.bias is not None:
                     m.bias.data.zero_()
         self.image_processor.reset_parameters()
@@ -397,7 +346,7 @@ class Agent(nn.Module):
         return h
 
     def predict_classes(self, h_c, desc_proc, batch_size):
-        '''
+        """
         Scores each class using an MLP or simple dot product
         desc_proc:     bs x num_classes x hid_dim
         h_c:           bs x hid_dim
@@ -405,7 +354,7 @@ class Agent(nn.Module):
         h_c_expand:    bs x num_classes x hid_dim
         hid_cat_desc:  (bs x num_classes) x (hid_dim * 2)
         y:             bs x num_classes
-        '''
+        """
         if self.use_MLP:
             h_c_expand = torch.unsqueeze(
                 h_c, dim=1).expand(-1, self.num_classes, -1)
@@ -466,7 +415,8 @@ class Agent(nn.Module):
             batch_size: size of batch
             training: whether agent is training or not
         Output:
-            s, s_probs: A STOP bit and its associated probability, indicating whether the agent has decided to make a selection. The conversation will continue until both agents have selected STOP.
+            s, s_probs: A STOP bit and its associated probability, indicating whether the agent has decided to
+                make a selection. The conversation will continue until both agents have selected STOP.
             w, w_probs: A binary message and the probability of each bit in the message being ``1``.
             y: A prediction for each class described in the descriptions.
             r: An estimate of the reward the agent will receive
@@ -545,19 +495,18 @@ if __name__ == "__main__":
     im_feat_dim = 128
     h_dim = 64
     m_dim = 6
+    num_capsules_l1 = 8
+    num_capsules_l2 = 10
     desc_dim = 100
     num_classes = 3
     s_dim = 1
     use_binary = True
     use_message = True
-    use_attn = False
-    attn_dim = 128
     batch_size = 8
     training = True
     dropout = 0.3
     use_MLP = False
     cuda = False
-    im_from_scratch = True
     agent = Agent(im_feature_type,
                   im_feat_dim,
                   h_dim,
@@ -566,18 +515,14 @@ if __name__ == "__main__":
                   num_classes,
                   s_dim,
                   use_binary,
-                  use_attn,
-                  attn_dim,
                   use_MLP,
                   cuda,
-                  im_from_scratch,
-                  dropout)
-    print(agent)
-    total_params = sum([functools.reduce(lambda x, y: x * y, p.size(), 1.0)
-                        for p in agent.parameters()])
-    image_proc_params = sum([functools.reduce(lambda x, y: x * y, p.size(), 1.0)
-                            for p in agent.image_processor.parameters()])
-    print(f'Total params: {total_params}, image proc params: {image_proc_params}')
+                  num_capsules_l1,
+                  num_capsules_l2
+                  )
+
+    summary(agent, input_size=(batch_size, 3, 128, 128))
+
     x = _Variable(torch.ones(batch_size, 3, im_feat_dim, im_feat_dim))
     m = _Variable(torch.ones(batch_size, m_dim))
     desc = _Variable(torch.ones(batch_size, num_classes, desc_dim))

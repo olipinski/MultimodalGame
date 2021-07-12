@@ -26,24 +26,10 @@ Note: this assumes you are using the Anaconda package and environment manager. T
 git clone --recurse-submodules https://github.com/lgraesser/MultimodalGame.git
 cd MultimodalGame
 # Install dependencies
-conda create --name emergent_comms
-source activate emergent_comms
-conda install pytorch torchvision -c pytorch
-pip install -r requirements.txt
+conda create --name MultimodalGame --file requirements.txt
 # Install ShapeWorld
 pip install -e ShapeWorld
 ```
-
-### Dependencies
-
-- pyTorch
-- h5py
-- numpy
-- python-gflags
-- tqdm
-- scikit-image
-- sklearn
-- tensorflow
 
 <a name="data"></a>
 ## Training data

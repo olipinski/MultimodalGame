@@ -20,6 +20,9 @@ from shapeworld import dataset
 from misc import embed, cbow_general
 from utils.package_data import FeatureModel
 
+import torch
+import shapeworld as sw
+
 FLAGS = gflags.FLAGS
 
 FORMAT = '[%(asctime)s %(levelname)s] %(message)s'
@@ -27,8 +30,8 @@ logging.basicConfig(format=FORMAT)
 debuglogger = logging.getLogger('main_logger')
 debuglogger.setLevel('DEBUG')
 
-SHAPES = ['circle', 'cross', 'ellipse', 'pentagon', 'rectangle', 'semicircle', 'square', 'triangle']
-COLORS = ['blue', 'cyan', 'gray', 'green', 'magenta', 'red', 'yellow']
+COLOURS = ('red', 'green', 'blue', 'yellow', 'magenta', 'cyan')
+SHAPES = ('square', 'rectangle', 'triangle', 'pentagon', 'cross', 'circle')
 
 
 def clean_and_tokenize(desc):
@@ -284,7 +287,7 @@ def load_shapeworld_dataset(data_path, embed_path, mode, size, ds_type, name, ba
             for w in cap:
                 if w in SHAPES:
                     shape = w
-                if w in COLORS:
+                if w in COLOURS:
                     color = w
             batch["shapes"].append(shape)
             batch["colors"].append(color)
@@ -304,7 +307,7 @@ def load_shapeworld_dataset(data_path, embed_path, mode, size, ds_type, name, ba
                 for w in cap:
                     if w in SHAPES:
                         shape = w
-                    if w in COLORS:
+                    if w in COLOURS:
                         color = w
                 s.append(shape)
                 c.append(color)
@@ -369,6 +372,21 @@ def load_shapeworld_dataset(data_path, embed_path, mode, size, ds_type, name, ba
 
 
 if __name__ == "__main__":
+
+    dataset = sw.Dataset.create(dtype="classification",
+                                name="shape",
+                                count_class=True,
+                                world_size=128,
+                                pixel_noise_stddev=0.05,
+                                shapes=SHAPES,
+                                colors=COLOURS)
+    generated = dataset.generate(n=10, mode="train", include_model=True)
+
+    batch = (generated['world'], generated['classification'])
+
+
+
+
     # Settings
     gflags.DEFINE_enum("resnet", "34", ["18", "34", "50", "101", "152"], "Specify Resnet variant.")
     gflags.DEFINE_boolean("improc_from_scratch", False, "Whether to train the image processor from scratch")

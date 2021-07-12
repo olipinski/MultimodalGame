@@ -1,8 +1,8 @@
-'''
+"""
 Utility functions for setting up agent communities. There are two main roles:
     1. Building the agent community connectivity graph and transforming this into a probability distribution for sampling pairs of agents to train
     2. Generating the set of evaluation pairs to periodically track different types of agent performance
-'''
+"""
 
 import os
 import sys
@@ -23,19 +23,22 @@ debuglogger.setLevel('DEBUG')
 
 
 def sample_agents(train_probs, agent_idx_list):
-    ''' Takes in a probability distribution over agent pairs and a mapping from from flattened index to agent pairs, and returns a pair of agent indexes'''
+    """ Takes in a probability distribution over agent pairs and a mapping from from flattened index to agent pairs,
+    and returns a pair of agent indexes """
     idx = np.random.choice(list(range(len(agent_idx_list))), p=train_probs)
     (agent1, agent2) = agent_idx_list[idx]
     return (agent1, agent2)
 
 
 def build_train_matrix(pools_num, community_type, intra_pool_connect_p, inter_pool_connect_p, adjust_train_ratio, intra_inter_ratio=1.0):
-    '''Builds a connectivity matrix over multiple pools of agents. Returns a probability distribution over all possible agent connections in the population (across multiple pools) and a mapping from ints to agent pairs
+    """Builds a connectivity matrix over multiple pools of agents. Returns a probability distribution over all
+    possible agent connections in the population (across multiple pools) and a mapping from ints to agent pairs
 
     Params:
     pools_num: list containing the number of agents in each pool
     community_type: community structure - "hub_spoke" or "dense"
-    intra_pool_connect_p: list containing percentages of agents in a pool that should be connected with other agents in the same pool
+    intra_pool_connect_p: list containing percentages of agents in a pool that should be connected with other agents in
+    the same pool
     inter_pool_connect_p: percentage of agents in a pool that should be connected with agents in the other pools
     adjust_train_ratio: whether to adjust the ratio of inter:intra training
     inter_intra_ratio: ratio of within pool to between pool training samples. Default is 1.0
@@ -43,8 +46,9 @@ def build_train_matrix(pools_num, community_type, intra_pool_connect_p, inter_po
     Returns:
     train_vec_prob: probability distribution over all possible agent pairs. Size = total_agents ^2
     agent_idx_list: corresponding agent pairs.
-        e.g if train_vec_prob[1] = 0.1 and agent_idx_list[1] = (0, 1) then agents 0 and 1 will be selected to train 10% of the time
-    '''
+        e.g if train_vec_prob[1] = 0.1 and agent_idx_list[1] = (0, 1) then agents 0 and 1 will be selected to
+        train 10% of the time
+    """
     total_agents = sum(pools_num)
     agent_idx_list = []
     intra_train_matrix = np.zeros((total_agents, total_agents))
@@ -109,7 +113,8 @@ def build_train_matrix(pools_num, community_type, intra_pool_connect_p, inter_po
         total_interpool = np.sum(inter_train_matrix)
         debuglogger.info(f'Total interpool: {total_interpool}')
         if total_interpool == 0:
-            debuglogger.warn(f'No inter pool connections, exiting (comment out this line in community_util.py if this is what you are after)...')
+            debuglogger.warning(f'No inter pool connections, exiting (comment out this line in community_util.py if '
+                                f'this is what you are after)...')
             sys.exit()
         # Adjust if desired to correct training ratio between intra and inter pool
         cur_ratio = total_intrapool / total_interpool
@@ -135,13 +140,13 @@ def build_train_matrix(pools_num, community_type, intra_pool_connect_p, inter_po
                 agent_idx_list.append((i, j))
         debuglogger.info(f'Agent idx list: {agent_idx_list}')
     else:
-        debuglogger.warn(f'Invalid community type, please select "dense" or "chain"')
+        debuglogger.warning(f'Invalid community type, please select "dense" or "chain"')
         sys.exit()
     return (train_vec_prob, agent_idx_list)
 
 
 def build_eval_list(pools_num, community_type, train_vec_prob):
-    '''Builds a list of list of agent pairs to select for evaluation from all possible pairs of agents.
+    """Builds a list of list of agent pairs to select for evaluation from all possible pairs of agents.
     Considers 6 types of connections.
         1. self communication, agent connected to multiple pools
         2. self communication, agent connected to only one pool
@@ -149,7 +154,7 @@ def build_eval_list(pools_num, community_type, train_vec_prob):
         4. within pool communication, different agents, never trained together
         5. cross pool communication, different agents, trained together
         6. cross pool communication, different agents, never trained together
-    '''
+    """
     total_agents = sum(pools_num)
     eval_connections = np.zeros((total_agents, total_agents))
     train_matrix = np.reshape(train_vec_prob, (total_agents, total_agents))

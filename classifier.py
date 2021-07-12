@@ -15,6 +15,7 @@ from misc import recursively_set_device
 
 SHAPES = [None, 'circle', 'cross', 'ellipse', 'pentagon', 'rectangle', 'semicircle', 'square', 'triangle']
 COLORS = [None, 'blue', 'cyan', 'gray', 'green', 'magenta', 'red', 'yellow']
+
 SHAPES_DICT = {}
 COLORS_DICT = {}
 for i, s in enumerate(SHAPES):
