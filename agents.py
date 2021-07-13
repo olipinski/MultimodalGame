@@ -17,13 +17,13 @@ debuglogger.setLevel('INFO')
 
 
 def reset_parameters_util_x(model):
-    for m in model.modules():
-        if isinstance(m, nn.Linear):
-            nn.init.xavier_normal_(m.weight.data, 1)
-            if m.bias is not None:
-                m.bias.data.zero_()
-        elif isinstance(m, nn.GRUCell):
-            for mm in m.parameters():
+    for module in model.modules():
+        if isinstance(module, nn.Linear):
+            nn.init.xavier_normal_(module.weight.data, 1)
+            if module.bias is not None:
+                module.bias.data.zero_()
+        elif isinstance(module, nn.GRUCell):
+            for mm in module.parameters():
                 if mm.data.ndimension() == 2:
                     nn.init.xavier_normal_(mm.data, 1)
                 elif mm.data.ndimension() == 1:  # Bias
@@ -31,15 +31,15 @@ def reset_parameters_util_x(model):
 
 
 def reset_parameters_util_h(model):
-    for m in model.modules():
-        if isinstance(m, nn.Linear):
-            nn.init.nn.init.kaiming_normal_(m.weight.data, 1)
-            if m.bias is not None:
-                m.bias.data.zero_()
-        elif isinstance(m, nn.GRUCell):
-            for mm in m.parameters():
+    for module in model.modules():
+        if isinstance(module, nn.Linear):
+            nn.init.kaiming_normal_(module.weight.data, 1)
+            if module.bias is not None:
+                module.bias.data.zero_()
+        elif isinstance(module, nn.GRUCell):
+            for mm in module.parameters():
                 if mm.data.ndimension() == 2:
-                    nn.init.nn.init.kaiming_normal_(mm.data, 1)
+                    nn.init.kaiming_normal_(mm.data, 1)
                 elif mm.data.ndimension() == 1:  # Bias
                     mm.data.zero_()
 
@@ -49,8 +49,8 @@ class CapsConvLayer(nn.Module):
         super(CapsConvLayer, self).__init__()
         self.conv = nn.Conv2d(in_channels=in_channels,
                               out_channels=out_channels,
-                              kernel_size=kernel_size,
-                              stride=1
+                              kernel_size=(kernel_size, kernel_size),
+                              stride=(1, 1)
                               )
 
     def forward(self, x):
@@ -60,12 +60,13 @@ class CapsConvLayer(nn.Module):
 
 
 class CapsPrimaryLayer(nn.Module):
-    def __init__(self, route_mult=32, im_dim=6, num_capsules=8, in_channels=256, out_channels=32, kernel_size=9):
+    def __init__(self, route_multiple=32, im_dim=6, num_capsules=8, in_channels=256, out_channels=32, kernel_size=9):
         super(CapsPrimaryLayer, self).__init__()
         self.im_dim = im_dim
-        self.route_mult = route_mult
+        self.route_multiple = route_multiple
         self.capsules = nn.ModuleList([
-            nn.Conv2d(in_channels=in_channels, out_channels=out_channels, kernel_size=kernel_size, stride=2, padding=0)
+            nn.Conv2d(in_channels=in_channels, out_channels=out_channels, kernel_size=(kernel_size, kernel_size),
+                      stride=(2, 2), padding=0)
             for _ in range(num_capsules)])
 
     def squash(self, input_tensor):
@@ -76,18 +77,18 @@ class CapsPrimaryLayer(nn.Module):
     def forward(self, x):
         u = [capsule(x) for capsule in self.capsules]
         u = torch.stack(u, dim=1)
-        u = u.view(x.size(0), self.route_mult * self.im_dim * self.im_dim, -1)
+        u = u.view(x.size(0), self.route_multiple * self.im_dim * self.im_dim, -1)
         u = self.squash(u)
         return u
 
 
 class CapsShapeLayer(nn.Module):
-    def __init__(self, im_dim=6, route_mult=32, num_capsules=16, in_channels=8, out_channels=16, cuda=False):
+    def __init__(self, im_dim=6, route_multiple=32, num_capsules=16, in_channels=8, out_channels=16, use_cuda=False):
         super(CapsShapeLayer, self).__init__()
         self.in_channels = in_channels
-        self.num_routes = route_mult * im_dim * im_dim
+        self.num_routes = route_multiple * im_dim * im_dim
         self.num_capsules = num_capsules
-        self.use_cuda = cuda
+        self.use_cuda = use_cuda
 
         self.W = nn.Parameter(torch.randn(1, self.num_routes, num_capsules, out_channels, in_channels))
 
@@ -125,7 +126,7 @@ class CapsShapeLayer(nn.Module):
 class ImageProcessor(nn.Module):
     """Processes an agent's image, with or without attention"""
 
-    def __init__(self, im_feat_dim, hid_dim, num_capsules_l1, cuda, route_mult):
+    def __init__(self, im_feat_dim, hid_dim, num_capsules_l1, use_cuda, route_multiple):
         super(ImageProcessor, self).__init__()
         self.reset_parameters()
         self.hid_dim = np.sqrt(hid_dim).astype(int)
@@ -134,9 +135,9 @@ class ImageProcessor(nn.Module):
         conv_dim_2 = conv_output_shape(conv_dim_1, 9, 2, 0, 1)
         self.capsConvLayer = CapsConvLayer()
         self.capsPrimaryLayer = CapsPrimaryLayer(im_dim=conv_dim_2[0],
-                                                 num_capsules=num_capsules_l1, route_mult=route_mult)
+                                                 num_capsules=num_capsules_l1, route_multiple=route_multiple)
         self.capsShapeLayer = CapsShapeLayer(im_dim=conv_dim_2[0], num_capsules=self.hid_dim,
-                                             cuda=cuda, route_mult=route_mult)
+                                             use_cuda=use_cuda, route_multiple=route_multiple)
 
     def reset_parameters(self):
         reset_parameters_util_h(self)
@@ -294,7 +295,7 @@ class Agent(nn.Module):
                  num_classes,
                  s_dim,
                  use_binary,
-                 use_MLP,
+                 use_mlp,
                  cuda,
                  num_capsules_l1,
                  route_mult
@@ -308,11 +309,11 @@ class Agent(nn.Module):
         self.num_classes = num_classes
         self.s_dim = s_dim
         self.use_binary = use_binary
-        self.use_MLP = use_MLP
+        self.use_MLP = use_mlp
         self.use_cuda = cuda
         self.num_capsules_l1 = num_capsules_l1
         self.image_processor = ImageProcessor(im_feat_dim=im_feat_dim, hid_dim=h_dim, num_capsules_l1=num_capsules_l1,
-                                              cuda=cuda, route_mult=route_mult)
+                                              use_cuda=cuda, route_multiple=route_mult)
         self.text_processor = TextProcessor(desc_dim=desc_dim, hid_dim=h_dim)
         self.message_processor = MessageProcessor(m_dim=m_dim, hid_dim=h_dim, cuda=cuda)
         self.message_generator = MessageGenerator(m_dim=m_dim, hid_dim=h_dim, use_binary=use_binary)
@@ -420,7 +421,6 @@ class Agent(nn.Module):
         Args:
             x: Image features.
             m: communication from other agent
-            t: (attention) Timestep. Used to change attention equation in first iteration.
             desc: List of description vectors used in communication and predictions.
             batch_size: size of batch
             training: whether agent is training or not
@@ -460,8 +460,8 @@ class Agent(nn.Module):
         debuglogger.debug(f'desc_proc: {desc_proc.size()}')
 
         # Estimate the reward
-        r = self.reward_estimator(h_c)
-        debuglogger.debug(f'r: {r.size()}')
+        reward_estimator = self.reward_estimator(h_c)
+        debuglogger.debug(f'r: {reward_estimator.size()}')
 
         # Calculate stop bits
         s_score = self.s(h_c)
@@ -486,8 +486,8 @@ class Agent(nn.Module):
 
         # Predict classes
         # y: batch_size * num_classes
-        y = self.predict_classes(h_c, desc_proc, batch_size)
-        y_scores = F.softmax(y, dim=1).detach()
+        class_prediction = self.predict_classes(h_c, desc_proc, batch_size)
+        y_scores = F.softmax(class_prediction, dim=1).detach()
         debuglogger.debug(f'y_scores: {y_scores.size()}')
         # debuglogger.debug(f'y_scores: {y_scores}')
 
@@ -496,7 +496,7 @@ class Agent(nn.Module):
         debuglogger.debug(f'w: {w.size()}')
         debuglogger.debug(f'w_probs: {w_probs.size()}')
 
-        return (s_binary, s_prob), (w, w_probs), y, r
+        return (s_binary, s_prob), (w, w_probs), class_prediction, reward_estimator
 
 
 if __name__ == "__main__":
