@@ -161,7 +161,9 @@ def log_message_stats(message_stats, logger, flogger, data_type, epoch, step, i_
                        val=means[i], step=step)
             logger.log(key=data_type + ": " + s + " message stats: Agent " + str(i) + ": std: ",
                        val=stds[i], step=step)
-            flogger.Log("Epoch: {} Step: {} Batch: {} {} message stats: shape {}: count: {},agent {}: mean: {}, std: {}".format(epoch, step, i_batch, data_type, s, num, i, means[i], stds[i]))
+            flogger.Log(
+                "Epoch: {} Step: {} Batch: {} {} message stats: shape {}: count: {},agent {}: mean: {}, std: {}".format(
+                    epoch, step, i_batch, data_type, s, num, i, means[i], stds[i]))
         for i in range(len(dists)):
             logger.log(key=data_type + ": " + s + " message stats: distances: [" + str(dists[i][0]) + ":" + str(
                 dists[i][1]) + "]: ", val=dists[i][2], step=step)
@@ -698,7 +700,8 @@ def get_similarity(dataset_path, in_domain_eval, agent1, agent2, a1_group, a2_gr
                                     dist_1_change, new_target, 1, FLAGS.top_k_dev)
                                 score = top_1_1_change
                             debuglogger.debug(
-                                f'i: {_}_{_t}: New caption: {t}, new target: {_t}, change_agent: {change_agent}, correct: {score[0]}, originally correct: {correct_1[_]}/{correct_2[_]}')
+                                f'i: {_}_{_t}: New caption: {t}, new target: {_t}, change_agent: {change_agent}, '
+                                f'correct: {score[0]}, originally correct: {correct_1[_]}/{correct_2[_]}')
 
                             # Store results
                             test_language_similarity["total"] += 1
@@ -777,7 +780,8 @@ def get_similarity(dataset_path, in_domain_eval, agent1, agent2, a1_group, a2_gr
                                     na, argmax_y2 = torch.max(y[1][-1], 1)
                                     debuglogger.debug(f'y1 logits: {y[0][-1].data}, y2 logits: {y[1][-1].data}')
                                     debuglogger.debug(
-                                        f'y1: {argmax_y1.data[0]}, y2: {argmax_y2.data[0]}, new_target: {new_target[0]}')
+                                        f'y1: {argmax_y1.data[0]}, y2: {argmax_y2.data[0]}, '
+                                        f'new_target: {new_target[0]}')
                                     if FLAGS.cuda:
                                         new_target = new_target.cuda()
                                     if change_agent == 1:
@@ -797,7 +801,9 @@ def get_similarity(dataset_path, in_domain_eval, agent1, agent2, a1_group, a2_gr
                                             dist_1_change, new_target, 1, FLAGS.top_k_dev)
                                         score = top_1_1_change
                                     debuglogger.debug(
-                                        f'i: {_}_{_t}: New caption: {t}, new target: {_t}, change_agent: {change_agent}, correct: {score[0]}, originally correct: {correct_1[_]}/{correct_2[_]}')
+                                        f'i: {_}_{_t}: New caption: {t}, new target: {_t}, change_agent: '
+                                        f'{change_agent}, correct: {score[0]}, '
+                                        f'originally correct: {correct_1[_]}/{correct_2[_]}')
 
                                     # Store results
                                     test_language_similarity["total"] += 1
@@ -864,7 +870,8 @@ def get_similarity(dataset_path, in_domain_eval, agent1, agent2, a1_group, a2_gr
                                     na, argmax_y2 = torch.max(y[1][-1], 1)
                                     debuglogger.debug(f'y1 logits: {y[0][-1].data}, y2 logits: {y[1][-1].data}')
                                     debuglogger.debug(
-                                        f'y1: {argmax_y1.data[0]}, y2: {argmax_y2.data[0]}, new_target: {new_target[0]}')
+                                        f'y1: {argmax_y1.data[0]}, y2: {argmax_y2.data[0]},'
+                                        f' new_target: {new_target[0]}')
                                     if FLAGS.cuda:
                                         new_target = new_target.cuda()
                                     if change_agent == 1:
@@ -884,7 +891,9 @@ def get_similarity(dataset_path, in_domain_eval, agent1, agent2, a1_group, a2_gr
                                             dist_1_change, new_target, 1, FLAGS.top_k_dev)
                                         score = top_1_1_change
                                     debuglogger.debug(
-                                        f'i: {_}_{_t}: New caption: {t}, new target: {_t}, change_agent: {change_agent}, correct: {score[0]}, originally correct: {correct_1[_]}/{correct_2[_]}')
+                                        f'i: {_}_{_t}: New caption: {t}, new target: {_t}, '
+                                        f'change_agent: {change_agent}, correct: {score[0]}, '
+                                        f'originally correct: {correct_1[_]}/{correct_2[_]}')
 
                                     # Store results
                                     test_language_similarity["total"] += 1
@@ -980,18 +989,23 @@ def get_similarity(dataset_path, in_domain_eval, agent1, agent2, a1_group, a2_gr
 
     # Log detailed stats results
     flogger.Log(
-        f'Agents {a1_idx + 1},{a2_idx + 1}: Total examples: {detail_total}, orig correct: {detail_orig_correct}, % correct: {detail_orig_correct / detail_total}')
+        f'Agents {a1_idx + 1},{a2_idx + 1}: Total examples: {detail_total}, orig correct:'
+        f' {detail_orig_correct}, % correct: {detail_orig_correct / detail_total}')
     flogger.Log(
-        f'Agents {a1_idx + 1},{a2_idx + 1}: Total permutations: {detail_total_permutes_not_filtered}, own_codes: {detail_own_total_total}, % own {detail_own_total_total / detail_total_permutes_not_filtered}')
+        f'Agents {a1_idx + 1},{a2_idx + 1}: Total permutations: {detail_total_permutes_not_filtered},'
+        f' own_codes: {detail_own_total_total}, % own {detail_own_total_total / detail_total_permutes_not_filtered}')
     flogger.Log(
-        f'Agents {a1_idx + 1},{a2_idx + 1}: Total own codes: {detail_own_total}, correct own codes: {detail_own_correct}, % correct {detail_own_correct / detail_own_total}')
+        f'Agents {a1_idx + 1},{a2_idx + 1}: Total own codes: {detail_own_total},'
+        f' correct own codes: {detail_own_correct}, % correct {detail_own_correct / detail_own_total}')
     flogger.Log('Filtering for originally correct examples with at least one permutation with own codes correct...')
     flogger.Log(
-        f'Agents {a1_idx + 1},{a2_idx + 1}: Permutations total: {permutes_total}, permutations correct: {permutes_correct}, % {permutes_correct / permutes_total}')
+        f'Agents {a1_idx + 1},{a2_idx + 1}: Permutations total: {permutes_total},'
+        f' permutations correct: {permutes_correct}, % {permutes_correct / permutes_total}')
     norm_total = permutes_total - detail_own_total_filt
     norm_correct = permutes_correct - detail_own_correct
     flogger.Log(
-        f'Agents {a1_idx + 1},{a2_idx + 1}: Normalized total: {norm_total} normalized correct: {norm_correct}, SIMILARITY: {norm_correct / norm_total}')
+        f'Agents {a1_idx + 1},{a2_idx + 1}: Normalized total: {norm_total} normalized correct: {norm_correct},'
+        f' SIMILARITY: {norm_correct / norm_total}')
     for key in aggregate_stats:
         _total = aggregate_stats[key]['total']
         _correct = aggregate_stats[key]['correct']
@@ -1004,10 +1018,12 @@ def get_similarity(dataset_path, in_domain_eval, agent1, agent2, a1_group, a2_gr
                 f'Agents {a1_idx + 1},{a2_idx + 1}: {key}: total: {_total} correct: {_correct} %: {_correct / _total}')
             if _normalized_total > 0:
                 flogger.Log(
-                    f'Agents {a1_idx + 1},{a2_idx + 1}: {key}: normalized total: {_normalized_total} normalized correct: {_normalized_correct} SIMILARITY: {_normalized_correct / _normalized_total}')
+                    f'Agents {a1_idx + 1},{a2_idx + 1}: {key}: normalized total: {_normalized_total} '
+                    f'normalized correct: {_normalized_correct} SIMILARITY: {_normalized_correct / _normalized_total}')
             else:
                 flogger.Log(
-                    f'Agents {a1_idx + 1},{a2_idx + 1}: {key}: normalized total: {_normalized_total} normalized correct: {_normalized_correct} SIMILARITY: {0}')
+                    f'Agents {a1_idx + 1},{a2_idx + 1}: {key}: normalized total: {_normalized_total} '
+                    f'normalized correct: {_normalized_correct} SIMILARITY: {0}')
 
     return test_language_similarity
 
@@ -1241,7 +1257,7 @@ def eval_dev(dataset_path, top_k, agent1, agent2, logger, flogger, epoch, step, 
         # Agent 1 given Agent 2 both correct
         a2_idx = (correct_2_nc.float() + correct_2.float()) == 2
         a1_00 = (a2_idx & ((correct_1_nc.float() + correct_1.float()) == 0)).sum()
-        a1_10 = (a2_idx & ((correct_1_nc.float() + (1 - correct_1.float()) == 2))).sum()
+        a1_10 = (a2_idx & (correct_1_nc.float() + (1 - correct_1.float()) == 2)).sum()
         a1_01 = (a2_idx & (((1 - correct_1_nc.float()) + correct_1.float()) == 2)).sum()
         a1_11 = (a2_idx & ((correct_1_nc.float() + correct_1.float()) == 2)).sum()
         a1_tot = a2_idx.sum()
@@ -1256,7 +1272,7 @@ def eval_dev(dataset_path, top_k, agent1, agent2, logger, flogger, epoch, step, 
         # Agent 2 given Agent 1 both correct
         a1_idx = (correct_1_nc.float() + correct_1.float()) == 2
         a2_00 = (a1_idx & ((correct_2_nc.float() + correct_2.float()) == 0)).sum()
-        a2_10 = (a1_idx & ((correct_2_nc.float() + (1 - correct_2.float()) == 2))).sum()
+        a2_10 = (a1_idx & (correct_2_nc.float() + (1 - correct_2.float()) == 2)).sum()
         a2_01 = (a1_idx & (((1 - correct_2_nc.float()) + correct_2.float()) == 2)).sum()
         a2_11 = (a1_idx & ((correct_2_nc.float() + correct_2.float()) == 2)).sum()
         a2_tot = a1_idx.sum()
@@ -1387,7 +1403,8 @@ def eval_dev(dataset_path, top_k, agent1, agent2, logger, flogger, epoch, step, 
                                                   agent_groups[1], agent_idxs[0], agent_idxs[1], agent_dicts[0],
                                                   agent_dicts[1], logger, flogger)
         debuglogger.info(
-            f'Total msg changed: {test_language_similarity["total"]}, Correct: {sum(test_language_similarity["correct"])}')
+            f'Total msg changed: {test_language_similarity["total"]}, '
+            f'Correct: {sum(test_language_similarity["correct"])}')
     if store_examples:
         debuglogger.info(f'Finishing iterating through dev set, storing examples...')
         store_exemplar_batch(correct_to_analyze, "correct", logger, flogger)
@@ -1713,23 +1730,52 @@ def get_and_log_dev_performance(agent1, agent2, dataset_path, in_domain_eval, de
             domain, 'TOTAL SHAPES_COLORS out of domain', ood_total, ood_correct, ood_correct / ood_total))
     if FLAGS.report_on_complexity:
         flogger.Log(
-            f'{domain}: complexity report: total: avg ent: {extra["complexity_stats"]["total"]["avg_ent"]}, ent_avg_msg: {extra["complexity_stats"]["total"]["ent_avg_msg"]}, num_msgs: {extra["complexity_stats"]["total"]["num_msg"]}, distinct msg: {extra["complexity_stats"]["total"]["distinct_msg"]}')
+            f'{domain}: complexity report: total: avg ent: {extra["complexity_stats"]["total"]["avg_ent"]}, '
+            f'ent_avg_msg: {extra["complexity_stats"]["total"]["ent_avg_msg"]}, '
+            f'num_msgs: {extra["complexity_stats"]["total"]["num_msg"]}, '
+            f'distinct msg: {extra["complexity_stats"]["total"]["distinct_msg"]}')
         flogger.Log(
-            f'{domain}: complexity report: correct: avg ent: {extra["complexity_stats"]["correct"]["avg_ent"]}, ent_avg_msg: {extra["complexity_stats"]["correct"]["ent_avg_msg"]}, num_msgs: {extra["complexity_stats"]["correct"]["num_msg"]}, distinct msg: {extra["complexity_stats"]["correct"]["distinct_msg"]}')
+            f'{domain}: complexity report: correct: avg ent: {extra["complexity_stats"]["correct"]["avg_ent"]}, '
+            f'ent_avg_msg: {extra["complexity_stats"]["correct"]["ent_avg_msg"]}, num_msgs: '
+            f'{extra["complexity_stats"]["correct"]["num_msg"]}, distinct msg: '
+            f'{extra["complexity_stats"]["correct"]["distinct_msg"]}')
         flogger.Log(
-            f'{domain}: complexity report: incorrect: avg ent: {extra["complexity_stats"]["incorrect"]["avg_ent"]}, ent_avg_msg: {extra["complexity_stats"]["incorrect"]["ent_avg_msg"]}, num_msgs: {extra["complexity_stats"]["incorrect"]["num_msg"]}, distinct msg: {extra["complexity_stats"]["incorrect"]["distinct_msg"]}')
+            f'{domain}: complexity report: incorrect: avg ent: {extra["complexity_stats"]["incorrect"]["avg_ent"]}, '
+            f'ent_avg_msg: {extra["complexity_stats"]["incorrect"]["ent_avg_msg"]}, num_msgs: '
+            f'{extra["complexity_stats"]["incorrect"]["num_msg"]}, distinct msg: '
+            f'{extra["complexity_stats"]["incorrect"]["distinct_msg"]}')
         flogger.Log(
-            f'{domain}: complexity report: a1_total: avg ent: {extra["complexity_stats"]["a1_total"]["avg_ent"]}, ent_avg_msg: {extra["complexity_stats"]["a1_total"]["ent_avg_msg"]}, num_msgs: {extra["complexity_stats"]["a1_total"]["num_msg"]}, distinct msg: {extra["complexity_stats"]["a1_total"]["distinct_msg"]}')
+            f'{domain}: complexity report: a1_total: avg ent: {extra["complexity_stats"]["a1_total"]["avg_ent"]}, '
+            f'ent_avg_msg: {extra["complexity_stats"]["a1_total"]["ent_avg_msg"]}, num_msgs: '
+            f'{extra["complexity_stats"]["a1_total"]["num_msg"]}, distinct msg: '
+            f'{extra["complexity_stats"]["a1_total"]["distinct_msg"]}')
         flogger.Log(
-            f'{domain}: complexity report: a1_correct: avg ent: {extra["complexity_stats"]["a1_correct"]["avg_ent"]}, ent_avg_msg: {extra["complexity_stats"]["a1_correct"]["ent_avg_msg"]}, num_msgs: {extra["complexity_stats"]["a1_correct"]["num_msg"]}, distinct msg: {extra["complexity_stats"]["a1_correct"]["distinct_msg"]}')
+            f'{domain}: complexity report: a1_correct: avg ent: {extra["complexity_stats"]["a1_correct"]["avg_ent"]}, '
+            f'ent_avg_msg: {extra["complexity_stats"]["a1_correct"]["ent_avg_msg"]}, num_msgs: '
+            f'{extra["complexity_stats"]["a1_correct"]["num_msg"]}, distinct msg: '
+            f'{extra["complexity_stats"]["a1_correct"]["distinct_msg"]}')
         flogger.Log(
-            f'{domain}: complexity report: a1_incorrect: avg ent: {extra["complexity_stats"]["a1_incorrect"]["avg_ent"]}, ent_avg_msg: {extra["complexity_stats"]["a1_incorrect"]["ent_avg_msg"]}, num_msgs: {extra["complexity_stats"]["a1_incorrect"]["num_msg"]}, distinct msg: {extra["complexity_stats"]["a1_incorrect"]["distinct_msg"]}')
+            f'{domain}: complexity report: a1_incorrect: '
+            f'avg ent: {extra["complexity_stats"]["a1_incorrect"]["avg_ent"]}, '
+            f'ent_avg_msg: {extra["complexity_stats"]["a1_incorrect"]["ent_avg_msg"]}, '
+            f'num_msgs: {extra["complexity_stats"]["a1_incorrect"]["num_msg"]}, '
+            f'distinct msg: {extra["complexity_stats"]["a1_incorrect"]["distinct_msg"]}')
         flogger.Log(
-            f'{domain}: complexity report: a2_total: avg ent: {extra["complexity_stats"]["a2_total"]["avg_ent"]}, ent_avg_msg: {extra["complexity_stats"]["a2_total"]["ent_avg_msg"]}, num_msgs: {extra["complexity_stats"]["a2_total"]["num_msg"]}, distinct msg: {extra["complexity_stats"]["a2_total"]["distinct_msg"]}')
+            f'{domain}: complexity report: a2_total: avg ent: {extra["complexity_stats"]["a2_total"]["avg_ent"]}, '
+            f'ent_avg_msg: {extra["complexity_stats"]["a2_total"]["ent_avg_msg"]}, num_msgs: '
+            f'{extra["complexity_stats"]["a2_total"]["num_msg"]}, distinct msg: '
+            f'{extra["complexity_stats"]["a2_total"]["distinct_msg"]}')
         flogger.Log(
-            f'{domain}: complexity report: a2_correct: avg ent: {extra["complexity_stats"]["a2_correct"]["avg_ent"]}, ent_avg_msg: {extra["complexity_stats"]["a2_correct"]["ent_avg_msg"]}, num_msgs: {extra["complexity_stats"]["a2_correct"]["num_msg"]}, distinct msg: {extra["complexity_stats"]["a2_correct"]["distinct_msg"]}')
+            f'{domain}: complexity report: a2_correct: avg ent: {extra["complexity_stats"]["a2_correct"]["avg_ent"]}, '
+            f'ent_avg_msg: {extra["complexity_stats"]["a2_correct"]["ent_avg_msg"]}, num_msgs: '
+            f'{extra["complexity_stats"]["a2_correct"]["num_msg"]}, distinct msg: '
+            f'{extra["complexity_stats"]["a2_correct"]["distinct_msg"]}')
         flogger.Log(
-            f'{domain}: complexity report: a2_incorrect: avg ent: {extra["complexity_stats"]["a2_incorrect"]["avg_ent"]}, ent_avg_msg: {extra["complexity_stats"]["a2_incorrect"]["ent_avg_msg"]}, num_msgs: {extra["complexity_stats"]["a2_incorrect"]["num_msg"]}, distinct msg: {extra["complexity_stats"]["a2_incorrect"]["distinct_msg"]}')
+            f'{domain}: complexity report: a2_incorrect: '
+            f'avg ent: {extra["complexity_stats"]["a2_incorrect"]["avg_ent"]}, '
+            f'ent_avg_msg: {extra["complexity_stats"]["a2_incorrect"]["ent_avg_msg"]}, '
+            f'num_msgs: {extra["complexity_stats"]["a2_incorrect"]["num_msg"]}, '
+            f'distinct msg: {extra["complexity_stats"]["a2_incorrect"]["distinct_msg"]}')
     if agent_dicts is not None:
         flogger.Log('Test language similarity performance')
         comp_dict = {}
@@ -1765,9 +1811,12 @@ def get_and_log_dev_performance(agent1, agent2, dataset_path, in_domain_eval, de
                     comp_dict[transform]['orig_incorrect']['correct'] += 1
                     correct_orig_incorrect += 1
         flogger.Log(
-            f'Test comp: total: {len(comp_data["orig_shape"])} orig correct: {orig_correct} orig incorrect: {orig_incorrect}')
+            f'Test comp: total: {len(comp_data["orig_shape"])} orig correct: {orig_correct} '
+            f'orig incorrect: {orig_incorrect}')
         flogger.Log(
-            f'Total correct: {correct}/{correct / len(comp_data["orig_shape"])}, orig_correct_correct {correct_orig_correct}/{correct_orig_correct / orig_correct}, orig_incorrect_correct {correct_orig_incorrect}/{correct_orig_incorrect / orig_incorrect}')
+            f'Total correct: {correct}/{correct / len(comp_data["orig_shape"])}, '
+            f'orig_correct_correct {correct_orig_correct}/{correct_orig_correct / orig_correct}, '
+            f'orig_incorrect_correct {correct_orig_incorrect}/{correct_orig_incorrect / orig_incorrect}')
         for key in comp_dict:
             comp_dict[key]['p_correct'] = comp_dict[key]['correct'] / comp_dict[key]['total']
             if comp_dict[key]['orig_correct']['total'] > 0:
@@ -1777,11 +1826,14 @@ def get_and_log_dev_performance(agent1, agent2, dataset_path, in_domain_eval, de
                 comp_dict[key]['orig_incorrect']['p_correct'] = comp_dict[key]['orig_incorrect']['correct'] / \
                                                                 comp_dict[key]['orig_incorrect']['total']
             flogger.Log(
-                f'Transform {key}: total: {comp_dict[key]["total"]}:{comp_dict[key]["correct"]}/{comp_dict[key]["p_correct"]}')
+                f'Transform {key}: total: {comp_dict[key]["total"]}:'
+                f'{comp_dict[key]["correct"]}/{comp_dict[key]["p_correct"]}')
             flogger.Log(
-                f'Transform {key}: orig_correct: {comp_dict[key]["orig_correct"]["total"]}:{comp_dict[key]["orig_correct"]["correct"]}/{comp_dict[key]["orig_correct"]["p_correct"]}')
+                f'Transform {key}: orig_correct: {comp_dict[key]["orig_correct"]["total"]}:'
+                f'{comp_dict[key]["orig_correct"]["correct"]}/{comp_dict[key]["orig_correct"]["p_correct"]}')
             flogger.Log(
-                f'Transform {key}: orig_incorrect: {comp_dict[key]["orig_incorrect"]["total"]}:{comp_dict[key]["orig_incorrect"]["correct"]}/{comp_dict[key]["orig_incorrect"]["p_correct"]}')
+                f'Transform {key}: orig_incorrect: {comp_dict[key]["orig_incorrect"]["total"]}:'
+                f'{comp_dict[key]["orig_incorrect"]["correct"]}/{comp_dict[key]["orig_incorrect"]["p_correct"]}')
 
     return dev_accuracy_log, total_accuracy_com
 
@@ -1815,6 +1867,8 @@ def eval_community(eval_list, models_dict, dev_accuracy_log, logger, flogger, ep
                                            im_feat_dim=FLAGS.img_feat_dim,
                                            h_dim=FLAGS.h_dim,
                                            m_dim=FLAGS.m_dim,
+                                           num_capsules_l1=FLAGS.num_capsules_l1,
+                                           route_mult=32,
                                            desc_dim=FLAGS.desc_dim,
                                            num_classes=FLAGS.num_classes,
                                            s_dim=FLAGS.s_dim,
@@ -1844,6 +1898,7 @@ def eval_community(eval_list, models_dict, dev_accuracy_log, logger, flogger, ep
                                        im_feat_dim=FLAGS.img_feat_dim,
                                        h_dim=FLAGS.h_dim,
                                        m_dim=FLAGS.m_dim,
+                                       num_capsules_l1=FLAGS.num_capsules_l1,
                                        desc_dim=FLAGS.desc_dim,
                                        num_classes=FLAGS.num_classes,
                                        s_dim=FLAGS.s_dim,
@@ -1873,8 +1928,10 @@ def exchange(a1, a2, exchange_args):
     """Run a batched conversation between two agents.
 
     There are two parts to an exchange:
-        1. Each agent receives part of an image, and uses this to select the corresponding text from a selection of texts
-        2. Agents communicate for a number of steps, then each select the corresponding text again from the same selection of texts
+        1. Each agent receives part of an image, and uses this to select the corresponding text
+        from a selection of texts
+        2. Agents communicate for a number of steps, then each select the corresponding text again
+        from the same selection of texts
 
     Exchange Args:
         data: Image features
@@ -1887,7 +1944,8 @@ def exchange(a1, a2, exchange_args):
         desc: List of description vectors.
         train: Boolean value indicating training mode (True) or evaluation mode (False).
         break_early: Boolean value. If True, then terminate batched conversation if both agents are satisfied
-        test_language_similarity: Boolean: whether to test the language similarity using communication vector arithmetric
+        test_language_similarity: Boolean: whether to test the language similarity using
+        communication vector arithmetric
 
     Function Args:
         a1: agent1
@@ -2386,41 +2444,13 @@ def run():
             flogger.Log("There must be a code dictionary per agent")
             sys.exit()
 
-    # # Create agents
-    # im_feat_dim = 28
-    # # Hidden dimension must be power of 2
-    # h_dim = 256
-    # m_dim = 6
-    # num_capsules_l1 = 8
-    # num_capsules_l2 = 16
-    # desc_dim = 100
-    # num_classes = 3
-    # s_dim = 1
-    # use_binary = True
-    # use_message = True
-    # batch_size = 8
-    # training = True
-    # dropout = 0.3
-    # use_MLP = False
-    # cuda = False
-    # agent = Agent(im_feature_type,
-    #               im_feat_dim,
-    #               h_dim,
-    #               m_dim,
-    #               desc_dim,
-    #               num_classes,
-    #               s_dim,
-    #               use_binary,
-    #               use_MLP,
-    #               cuda,
-    #               num_capsules_l1,
-    #               num_capsules_l2
-    #               )
+    # Create agents
     for _ in range(FLAGS.num_agents):
         agent = Agent(im_feature_type=FLAGS.img_feat,
                       im_feat_dim=FLAGS.img_feat_dim,
                       h_dim=FLAGS.h_dim,
                       m_dim=FLAGS.m_dim,
+                      num_capsules_l1=FLAGS.num_capsules_l1,
                       desc_dim=FLAGS.desc_dim,
                       num_classes=FLAGS.num_classes,
                       s_dim=FLAGS.s_dim,
@@ -2596,6 +2626,7 @@ def run():
                                        im_feat_dim=FLAGS.img_feat_dim,
                                        h_dim=FLAGS.h_dim,
                                        m_dim=FLAGS.m_dim,
+                                       num_capsules_l1=FLAGS.num_capsules_l1,
                                        desc_dim=FLAGS.desc_dim,
                                        num_classes=FLAGS.num_classes,
                                        s_dim=FLAGS.s_dim,
@@ -2742,20 +2773,21 @@ def run():
                     flogger.Log("Agent 2: {}".format(i + 2))
                     logger.log(key="Agent 2: ", val=i + 2, step=step)
                     agent2 = models_dict["agent" + str(i + 2)]
-                    dev_accuracy_id[i], total_accuracy_com = get_and_log_dev_performance(agent1, agent2,
-                                                                                         FLAGS.dataset_indomain_valid_path,
-                                                                                         True, dev_accuracy_id[i],
-                                                                                         logger, flogger,
-                                                                                         f'In Domain Agents {i + 1},{i + 2}',
-                                                                                         epoch, step, i_batch,
-                                                                                         store_examples=False,
-                                                                                         analyze_messages=False,
-                                                                                         save_messages=False,
-                                                                                         agent_tag=f'eval_only_A_{i + 1}_{i + 2}',
-                                                                                         agent_dicts=[code_dicts[0],
-                                                                                                      code_dicts[1]],
-                                                                                         agent_idxs=[i, i + 1],
-                                                                                         agent_groups=[1, 1])
+                    dev_accuracy_id[i], total_accuracy_com = get_and_log_dev_performance(
+                        agent1, agent2,
+                        FLAGS.dataset_indomain_valid_path,
+                        True, dev_accuracy_id[i],
+                        logger, flogger,
+                        f'In Domain Agents {i + 1},{i + 2}',
+                        epoch, step, i_batch,
+                        store_examples=False,
+                        analyze_messages=False,
+                        save_messages=False,
+                        agent_tag=f'eval_only_A_{i + 1}_{i + 2}',
+                        agent_dicts=[code_dicts[0],
+                                  code_dicts[1]],
+                        agent_idxs=[i, i + 1],
+                        agent_groups=[1, 1])
             else:
                 '''Please note that this is an experimental feature. To be tested further.'''
                 # Testing similarity between two language pairs. The pairs are assumed to be 2 of the pairs in a
@@ -2798,20 +2830,11 @@ def run():
                     flogger.Log("Agent 2: {}".format(i + 2))
                     logger.log(key="Agent 2: ", val=i + 2, step=step)
                     agent2 = models_dict["agent" + str(i + 2)]
-                    dev_accuracy_id[i], total_accuracy_com = get_and_log_dev_performance(agent1, agent2,
-                                                                                         FLAGS.dataset_indomain_valid_path,
-                                                                                         True, dev_accuracy_id[i],
-                                                                                         logger, flogger,
-                                                                                         f'In Domain Agents {i + 1},{i + 2}',
-                                                                                         epoch, step, i_batch,
-                                                                                         store_examples=False,
-                                                                                         analyze_messages=False,
-                                                                                         save_messages=False,
-                                                                                         agent_tag=f'eval_only_A_{i + 1}_{i + 2}',
-                                                                                         agent_dicts=[code_dicts[0],
-                                                                                                      code_dicts[1]],
-                                                                                         agent_idxs=[i, i + 1],
-                                                                                         agent_groups=[1, 1])
+                    dev_accuracy_id[i], total_accuracy_com = get_and_log_dev_performance(
+                        agent1, agent2, FLAGS.dataset_indomain_valid_path, True, dev_accuracy_id[i], logger, flogger,
+                        f'In Domain Agents {i + 1},{i + 2}', epoch, step, i_batch, store_examples=False,
+                        analyze_messages=False, save_messages=False, agent_tag=f'eval_only_A_{i + 1}_{i + 2}',
+                        agent_dicts=[code_dicts[0], code_dicts[1]], agent_idxs=[i, i + 1], agent_groups=[1, 1])
                 # Evaluate on group 2 pairs
                 for i in range(g2_bounds[0], g2_bounds[1] - 1):
                     flogger.Log("Agent 1: {}".format(i + 1))
@@ -2820,22 +2843,23 @@ def run():
                     flogger.Log("Agent 2: {}".format(i + 2))
                     logger.log(key="Agent 2: ", val=i + 2, step=step)
                     agent2 = models_dict["agent" + str(i + 2)]
-                    dev_accuracy_id[i], total_accuracy_com = get_and_log_dev_performance(agent1, agent2,
-                                                                                         FLAGS.dataset_indomain_valid_path,
-                                                                                         True, dev_accuracy_id[i],
-                                                                                         logger, flogger,
-                                                                                         f'In Domain Agents {i + 1},{i + 2}',
-                                                                                         epoch, step, i_batch,
-                                                                                         store_examples=False,
-                                                                                         analyze_messages=False,
-                                                                                         save_messages=False,
-                                                                                         agent_tag=f'eval_only_A_{i + 1}_{i + 2}',
-                                                                                         agent_dicts=[code_dicts[0],
-                                                                                                      code_dicts[1]],
-                                                                                         agent_idxs=[i - g2_bounds[0],
-                                                                                                     i + 1 - g2_bounds[
-                                                                                                         0]],
-                                                                                         agent_groups=[2, 2])
+                    dev_accuracy_id[i], total_accuracy_com = get_and_log_dev_performance(
+                        agent1, agent2,
+                        FLAGS.dataset_indomain_valid_path,
+                        True, dev_accuracy_id[i],
+                        logger, flogger,
+                        f'In Domain Agents {i + 1},{i + 2}',
+                        epoch, step, i_batch,
+                        store_examples=False,
+                        analyze_messages=False,
+                        save_messages=False,
+                        agent_tag=f'eval_only_A_{i + 1}_{i + 2}',
+                        agent_dicts=[code_dicts[0],
+                                     code_dicts[1]],
+                        agent_idxs=[i - g2_bounds[0],
+                                    i + 1 - g2_bounds[
+                                        0]],
+                        agent_groups=[2, 2])
 
         elif FLAGS.eval_agent_communities:
             eval_community(eval_agent_list, models_dict, dev_accuracy_id[0], logger, flogger, epoch, step, i_batch,
@@ -3000,6 +3024,7 @@ def run():
                                im_feat_dim=FLAGS.img_feat_dim,
                                h_dim=FLAGS.h_dim,
                                m_dim=FLAGS.m_dim,
+                               num_capsules_l1=FLAGS.num_capsules_l1,
                                desc_dim=FLAGS.desc_dim,
                                num_classes=FLAGS.num_classes,
                                s_dim=FLAGS.s_dim,
@@ -3247,7 +3272,8 @@ def run():
 
                 # Log accuracy
                 log_acc = "Epoch: {} Step: {} Batch: {} Agent 1: {} Agent 2: {} Training Accuracy:\nBefore comms: " \
-                          "Both correct: {} At least 1 correct: {}\nAfter comms: Both correct: {} At least 1 correct: {}".format(
+                          "Both correct: {} At least 1 correct: {}\nAfter comms: " \
+                          "Both correct: {} At least 1 correct: {}".format(
                     epoch, step, i_batch, agent_idxs[0], agent_idxs[1], avg_batch_acc_total_nc, avg_batch_acc_atl1_nc,
                     avg_batch_acc_total_com, avg_batch_acc_atl1_com)
                 flogger.Log(log_acc)
@@ -3442,6 +3468,7 @@ def run():
                                    im_feat_dim=FLAGS.img_feat_dim,
                                    h_dim=FLAGS.h_dim,
                                    m_dim=FLAGS.m_dim,
+                                   num_capsules_l1=FLAGS.num_capsules_l1,
                                    desc_dim=FLAGS.desc_dim,
                                    num_classes=FLAGS.num_classes,
                                    s_dim=FLAGS.s_dim,
@@ -3473,6 +3500,7 @@ def run():
                                             im_feat_dim=FLAGS.img_feat_dim,
                                             h_dim=FLAGS.h_dim,
                                             m_dim=FLAGS.m_dim,
+                                            num_capsules_l1=FLAGS.num_capsules_l1,
                                             desc_dim=FLAGS.desc_dim,
                                             num_classes=FLAGS.num_classes,
                                             s_dim=FLAGS.s_dim,

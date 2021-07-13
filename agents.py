@@ -502,7 +502,7 @@ class Agent(nn.Module):
 if __name__ == "__main__":
     print("Testing agent init and forward pass...")
     im_feature_type = ""
-    im_feat_dim = 128
+    im_feat_dim = 64
     # Hidden dimension must be power of 2
     h_dim = 256
     m_dim = 6
@@ -517,7 +517,7 @@ if __name__ == "__main__":
     training = True
     dropout = 0.3
     use_MLP = False
-    cuda = False
+    cuda = True
     agent = Agent(im_feature_type,
                   im_feat_dim,
                   h_dim,
@@ -536,9 +536,13 @@ if __name__ == "__main__":
     m = _Variable(torch.ones(batch_size, m_dim))
     desc = _Variable(torch.ones(batch_size, num_classes, desc_dim))
 
-    summary(agent, input_data=(x, m, desc, use_message, batch_size, training), device="cpu")
+    summary(agent, input_data=(x, m, desc, use_message, batch_size, training))
 
     for i in range(2):
+        if cuda:
+            x = x.cuda()
+            m = m.cuda()
+            desc = desc.cuda()
         s, w, y, r = agent(x, m, desc, use_message, batch_size, training)
         # print(f's_binary: {s[0]}')
         # print(f's_probs: {s[1]}')
