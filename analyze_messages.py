@@ -443,7 +443,7 @@ def create_shape_color_combos(data, blanks=[]):
         mean_1 = []
         mean_2 = []
         cols = []
-        for c in COLORS:
+        for c in COLOURS:
             if (s, c) in OUTOFDOMAIN:
                 continue
             sc = s + '_' + c
@@ -465,7 +465,7 @@ def create_shape_color_combos(data, blanks=[]):
         codes_s1.append((s, c_1))
         codes_s2.append((s, c_2))
     print('================================== COLORS ==================================')
-    for c in COLORS:
+    for c in COLOURS:
         mean_1 = []
         mean_2 = []
         sh = []

@@ -2386,7 +2386,36 @@ def run():
             flogger.Log("There must be a code dictionary per agent")
             sys.exit()
 
-    # Create agents
+    # # Create agents
+    # im_feat_dim = 28
+    # # Hidden dimension must be power of 2
+    # h_dim = 256
+    # m_dim = 6
+    # num_capsules_l1 = 8
+    # num_capsules_l2 = 16
+    # desc_dim = 100
+    # num_classes = 3
+    # s_dim = 1
+    # use_binary = True
+    # use_message = True
+    # batch_size = 8
+    # training = True
+    # dropout = 0.3
+    # use_MLP = False
+    # cuda = False
+    # agent = Agent(im_feature_type,
+    #               im_feat_dim,
+    #               h_dim,
+    #               m_dim,
+    #               desc_dim,
+    #               num_classes,
+    #               s_dim,
+    #               use_binary,
+    #               use_MLP,
+    #               cuda,
+    #               num_capsules_l1,
+    #               num_capsules_l2
+    #               )
     for _ in range(FLAGS.num_agents):
         agent = Agent(im_feature_type=FLAGS.img_feat,
                       im_feat_dim=FLAGS.img_feat_dim,

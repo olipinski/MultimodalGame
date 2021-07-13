@@ -2,15 +2,13 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable as _Variable
-import torch.optim as optim
-from torch.nn.parameter import Parameter
 import math
 import numpy as np
 import logging
-import functools
 
 from torchinfo import summary
 
+from misc import conv_output_shape
 
 FORMAT = '[%(asctime)s %(levelname)s] %(message)s'
 logging.basicConfig(format=FORMAT)
@@ -62,8 +60,10 @@ class CapsConvLayer(nn.Module):
 
 
 class CapsPrimaryLayer(nn.Module):
-    def __init__(self, num_capsules=8, in_channels=256, out_channels=32, kernel_size=9):
+    def __init__(self, route_mult=32, im_dim=6, num_capsules=8, in_channels=256, out_channels=32, kernel_size=9):
         super(CapsPrimaryLayer, self).__init__()
+        self.im_dim = im_dim
+        self.route_mult = route_mult
         self.capsules = nn.ModuleList([
             nn.Conv2d(in_channels=in_channels, out_channels=out_channels, kernel_size=kernel_size, stride=2, padding=0)
             for _ in range(num_capsules)])
@@ -76,19 +76,20 @@ class CapsPrimaryLayer(nn.Module):
     def forward(self, x):
         u = [capsule(x) for capsule in self.capsules]
         u = torch.stack(u, dim=1)
-        u = u.view(x.size(0), 32 * 6 * 6, -1)
-        return self.squash(u)
+        u = u.view(x.size(0), self.route_mult * self.im_dim * self.im_dim, -1)
+        u = self.squash(u)
+        return u
 
 
 class CapsShapeLayer(nn.Module):
-    def __init__(self, num_capsules=10, num_routes=32 * 6 * 6, in_channels=8, out_channels=16, cuda=False):
+    def __init__(self, im_dim=6, route_mult=32, num_capsules=16, in_channels=8, out_channels=16, cuda=False):
         super(CapsShapeLayer, self).__init__()
         self.in_channels = in_channels
-        self.num_routes = num_routes
+        self.num_routes = route_mult * im_dim * im_dim
         self.num_capsules = num_capsules
         self.use_cuda = cuda
 
-        self.W = nn.Parameter(torch.randn(1, num_routes, num_capsules, out_channels, in_channels))
+        self.W = nn.Parameter(torch.randn(1, self.num_routes, num_capsules, out_channels, in_channels))
 
     def squash(self, input_tensor):
         squared_norm = (input_tensor ** 2).sum(-1, keepdim=True)
@@ -118,19 +119,24 @@ class CapsShapeLayer(nn.Module):
                 a_ij = torch.matmul(u_hat.transpose(3, 4), torch.cat([v_j] * self.num_routes, dim=1))
                 b_ij = b_ij + a_ij.squeeze(4).mean(dim=0, keepdim=True)
 
-        return v_j.squeeze(1)
+        return v_j.squeeze(1).squeeze(-1)
 
 
 class ImageProcessor(nn.Module):
     """Processes an agent's image, with or without attention"""
 
-    def __init__(self, num_capsules_l1, num_capsules_l2, cuda):
+    def __init__(self, im_feat_dim, hid_dim, num_capsules_l1, cuda, route_mult):
         super(ImageProcessor, self).__init__()
-        self.use_cuda = cuda
         self.reset_parameters()
+        self.hid_dim = np.sqrt(hid_dim).astype(int)
+        # Dimensions after convolutions for auto scaling
+        conv_dim_1 = conv_output_shape((im_feat_dim, im_feat_dim), 9, 1, 0, 1)
+        conv_dim_2 = conv_output_shape(conv_dim_1, 9, 2, 0, 1)
         self.capsConvLayer = CapsConvLayer()
-        self.capsPrimaryLayer = CapsPrimaryLayer(num_capsules=num_capsules_l1)
-        self.capsShapeLayer = CapsShapeLayer(num_capsules=num_capsules_l2, cuda=True)
+        self.capsPrimaryLayer = CapsPrimaryLayer(im_dim=conv_dim_2[0],
+                                                 num_capsules=num_capsules_l1, route_mult=route_mult)
+        self.capsShapeLayer = CapsShapeLayer(im_dim=conv_dim_2[0], num_capsules=self.hid_dim,
+                                             cuda=cuda, route_mult=route_mult)
 
     def reset_parameters(self):
         reset_parameters_util_h(self)
@@ -140,7 +146,7 @@ class ImageProcessor(nn.Module):
         x = self.capsConvLayer(x)
         x = self.capsPrimaryLayer(x)
         x = self.capsShapeLayer(x)
-        return x
+        return x.view(x.shape[0], -1)
 
 
 class TextProcessor(nn.Module):
@@ -179,8 +185,12 @@ class MessageProcessor(nn.Module):
         reset_parameters_util_x(self)
 
     def forward(self, m, h, use_message):
+        if self.use_cuda:
+            h = h.cuda()
         if use_message:
             debuglogger.debug(f'Using message')
+            if self.use_cuda:
+                m = m.cuda()
             return self.rnn(m, h)
         else:
             debuglogger.debug(f'Ignoring message, using blank instead...')
@@ -227,10 +237,10 @@ class MessageGenerator(nn.Module):
         desc = torch.mul(y_broadcast, desc).sum(1).squeeze(1)
         debuglogger.debug(f'desc: {desc.size()}')
         # desc: batch_size x hid_dim
-        h_w = F.tanh(self.w_h(h_c) + self.w_d(desc))
+        h_w = torch.tanh(self.w_h(h_c) + self.w_d(desc))
         w_scores = self.w(h_w)
         if self.use_binary:
-            w_probs = F.sigmoid(w_scores)
+            w_probs = torch.sigmoid(w_scores)
             if training:
                 # debuglogger.info(f"Training...")
                 probs_ = w_probs.data.cpu().numpy()
@@ -287,7 +297,7 @@ class Agent(nn.Module):
                  use_MLP,
                  cuda,
                  num_capsules_l1,
-                 num_capsules_l2
+                 route_mult
                  ):
         super(Agent, self).__init__()
         self.im_feature_type = im_feature_type
@@ -301,12 +311,12 @@ class Agent(nn.Module):
         self.use_MLP = use_MLP
         self.use_cuda = cuda
         self.num_capsules_l1 = num_capsules_l1
-        self.num_capsules_l2 = num_capsules_l2
-        self.image_processor = ImageProcessor(num_capsules_l1, num_capsules_l2, cuda)
-        self.text_processor = TextProcessor(desc_dim, h_dim)
-        self.message_processor = MessageProcessor(m_dim, h_dim, cuda)
-        self.message_generator = MessageGenerator(m_dim, h_dim, use_binary)
-        self.reward_estimator = RewardEstimator(h_dim)
+        self.image_processor = ImageProcessor(im_feat_dim=im_feat_dim, hid_dim=h_dim, num_capsules_l1=num_capsules_l1,
+                                              cuda=cuda, route_mult=route_mult)
+        self.text_processor = TextProcessor(desc_dim=desc_dim, hid_dim=h_dim)
+        self.message_processor = MessageProcessor(m_dim=m_dim, hid_dim=h_dim, cuda=cuda)
+        self.message_generator = MessageGenerator(m_dim=m_dim, hid_dim=h_dim, use_binary=use_binary)
+        self.reward_estimator = RewardEstimator(hid_dim=h_dim)
         # Network for combining processed image and message representations
         self.text_im_combine = nn.Linear(h_dim * 2, h_dim)
         # Network for making predicitons
@@ -374,7 +384,7 @@ class Agent(nn.Module):
         debuglogger.debug(f'y: {y.size()}')
         return y
 
-    def forward(self, x, m, t, desc, use_message, batch_size, training):
+    def forward(self, x, m, desc, use_message, batch_size, training):
         """
         Update State:
             h_z = message_processor(m, h_z)
@@ -436,7 +446,7 @@ class Agent(nn.Module):
         debuglogger.debug(f'h_z: {self.h_z.size()}')
 
         # Process the image
-        h_i = self.image_processor(x, self.h_z, t)
+        h_i = self.image_processor(x)
         debuglogger.debug(f'h_i: {h_i.size()}')
 
         # Combine the image and message info to a single vector
@@ -455,7 +465,7 @@ class Agent(nn.Module):
 
         # Calculate stop bits
         s_score = self.s(h_c)
-        s_prob = F.sigmoid(s_score)
+        s_prob = torch.sigmoid(s_score)
         debuglogger.debug(f's_score: {s_score.size()}')
         debuglogger.debug(f's_prob: {s_prob.size()}')
         if training:
@@ -493,10 +503,11 @@ if __name__ == "__main__":
     print("Testing agent init and forward pass...")
     im_feature_type = ""
     im_feat_dim = 128
-    h_dim = 64
+    # Hidden dimension must be power of 2
+    h_dim = 256
     m_dim = 6
     num_capsules_l1 = 8
-    num_capsules_l2 = 10
+    route_mult = 32
     desc_dim = 100
     num_classes = 3
     s_dim = 1
@@ -518,17 +529,17 @@ if __name__ == "__main__":
                   use_MLP,
                   cuda,
                   num_capsules_l1,
-                  num_capsules_l2
+                  route_mult
                   )
-
-    summary(agent, input_size=(batch_size, 3, 128, 128))
 
     x = _Variable(torch.ones(batch_size, 3, im_feat_dim, im_feat_dim))
     m = _Variable(torch.ones(batch_size, m_dim))
     desc = _Variable(torch.ones(batch_size, num_classes, desc_dim))
 
+    summary(agent, input_data=(x, m, desc, use_message, batch_size, training), device="cpu")
+
     for i in range(2):
-        s, w, y, r = agent(x, m, i, desc, use_message, batch_size, training)
+        s, w, y, r = agent(x, m, desc, use_message, batch_size, training)
         # print(f's_binary: {s[0]}')
         # print(f's_probs: {s[1]}')
         # print(f'w_binary: {w[0]}')
