@@ -3665,6 +3665,7 @@ def flags():
         "desc_dim", 100, "Dimension of the input description vectors")
     gflags.DEFINE_integer(
         "num_classes", 10, "How many texts the agents have to choose from")
+    gflags.DEFINE_integer("num_capsules_l1", 8, "How many capsules for layer one")
     gflags.DEFINE_integer("s_dim", 1, "Stop probability output dim")
     gflags.DEFINE_boolean("use_binary", True,
                           "Encoding whether agents uses binary features")

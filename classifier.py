@@ -4,14 +4,13 @@ import argparse
 import functools
 import pickle
 import random
-import sys
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
 import torch.optim as optim
-from agents import reset_parameters_util
-from misc import recursively_set_device
+
+from misc import reset_parameters_util_x
 
 SHAPES = [None, 'circle', 'cross', 'ellipse', 'pentagon', 'rectangle', 'semicircle', 'square', 'triangle']
 COLORS = [None, 'blue', 'cyan', 'gray', 'green', 'magenta', 'red', 'yellow']
@@ -129,7 +128,7 @@ class Classifier(nn.Module):
         self.model = nn.Sequential(*self.layers)
 
     def reset_parameters(self):
-        reset_parameters_util(self)
+        reset_parameters_util_x(self)
 
     def forward(self, x):
         x = self.model(x)

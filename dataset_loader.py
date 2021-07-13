@@ -1,9 +1,6 @@
 import logging
 import sys
 import random
-import torch
-import math
-import pprint
 import string
 import gflags
 import numpy as np
@@ -13,7 +10,6 @@ from torchvision.utils import save_image
 from torch.autograd import Variable
 from skimage.transform import resize
 from nltk.tokenize import word_tokenize
-from nltk.corpus import stopwords
 from PIL import Image, ImageDraw
 
 from shapeworld import dataset

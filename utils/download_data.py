@@ -3,7 +3,7 @@ Script to download images and create descriptions file.
 
 Usage:
 
-    wget http://image-net.org/imagenet_data/urls/imagenet_fall11_urls.tgz # download imagenet urls. please decompress.
+    wget https://image-net.org/imagenet_data/urls/imagenet_fall11_urls.tgz # download imagenet urls. please decompress.
     python --cmd_urls # get relevant urls from imagenet
     python --cmd_split # create train/dev/test splits of urls
     python --cmd_desc # create descriptions file
@@ -74,7 +74,7 @@ def try_mkdir(path):
 
 
 def flickr_name(url):
-    tpl = "http://{subdomain}.flickr.com/{part1}/{part2}.{suffix}"
+    tpl = "https://{subdomain}.flickr.com/{part1}/{part2}.{suffix}"
     data = parse(tpl, url)
     return "{subdomain}_{part1}_{part2}.{suffix}".format(**data.named)
 

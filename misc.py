@@ -1,6 +1,5 @@
 import h5py
 import torch
-from torch.autograd import Variable
 import numpy as np
 import datetime
 import os
@@ -12,6 +11,8 @@ from nltk.corpus import stopwords
 import string
 import itertools
 import logging
+
+import torch.nn as nn
 
 try:
     from visdom import Visdom
@@ -481,3 +482,30 @@ def conv_output_shape(h_w, kernel_size=1, stride=1, pad=0, dilation=1):
     h = floor(((h_w[0] + (2 * pad) - (dilation * (kernel_size[0] - 1)) - 1) / stride) + 1)
     w = floor(((h_w[1] + (2 * pad) - (dilation * (kernel_size[1] - 1)) - 1) / stride) + 1)
     return h, w
+
+def reset_parameters_util_x(model):
+    for module in model.modules():
+        if isinstance(module, nn.Linear):
+            nn.init.xavier_normal_(module.weight.data, 1)
+            if module.bias is not None:
+                module.bias.data.zero_()
+        elif isinstance(module, nn.GRUCell):
+            for mm in module.parameters():
+                if mm.data.ndimension() == 2:
+                    nn.init.xavier_normal_(mm.data, 1)
+                elif mm.data.ndimension() == 1:  # Bias
+                    mm.data.zero_()
+
+
+def reset_parameters_util_h(model):
+    for module in model.modules():
+        if isinstance(module, nn.Linear):
+            nn.init.kaiming_normal_(module.weight.data, 1)
+            if module.bias is not None:
+                module.bias.data.zero_()
+        elif isinstance(module, nn.GRUCell):
+            for mm in module.parameters():
+                if mm.data.ndimension() == 2:
+                    nn.init.kaiming_normal_(mm.data, 1)
+                elif mm.data.ndimension() == 1:  # Bias
+                    mm.data.zero_()

@@ -4,17 +4,13 @@ Utility functions for setting up agent communities. There are two main roles:
     2. Generating the set of evaluation pairs to periodically track different types of agent performance
 """
 
-import os
 import sys
 import numpy as np
-import random
-import functools
+
 import logging
 
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
-from torch.autograd import Variable as Variable
+
 
 FORMAT = '[%(asctime)s %(levelname)s] %(message)s'
 logging.basicConfig(format=FORMAT)
@@ -85,15 +81,15 @@ def build_train_matrix(pools_num, community_type, intra_pool_connect_p, inter_po
                 prev_start = cur_start - pools_num[i - 1] if i > 0 else 0
                 next_end = cur_end + pools_num[i + 1] if i < len(pools_num) - 1 else cur_end
                 debuglogger.debug(f'prev start: {prev_start}, cur_start: {cur_start}, cur_end: {cur_end}, next_end: {next_end}')
-                for i in range(cur_start, cur_end):
+                for o in range(cur_start, cur_end):
                     for j in range(prev_start, cur_start):
-                        # print(f'i: {i}, j: {j}')
+                        # print(f'i: {o}, j: {j}')
                         if np.random.rand() < inter_pool_connect_p:
-                            inter_train_matrix[i][j] = 1
+                            inter_train_matrix[o][j] = 1
                     for j in range(cur_end, next_end):
-                        print(f'i: {i}, j: {j}')
+                        print(f'i: {o}, j: {j}')
                         if np.random.rand() < inter_pool_connect_p:
-                            inter_train_matrix[i][j] = 1
+                            inter_train_matrix[o][j] = 1
                 cur_start = cur_end
         else:
             prev_p = 0

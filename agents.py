@@ -8,41 +8,12 @@ import logging
 
 from torchinfo import summary
 
-from misc import conv_output_shape
+from misc import conv_output_shape, reset_parameters_util_x, reset_parameters_util_h
 
 FORMAT = '[%(asctime)s %(levelname)s] %(message)s'
 logging.basicConfig(format=FORMAT)
 debuglogger = logging.getLogger('main_logger')
 debuglogger.setLevel('INFO')
-
-
-def reset_parameters_util_x(model):
-    for module in model.modules():
-        if isinstance(module, nn.Linear):
-            nn.init.xavier_normal_(module.weight.data, 1)
-            if module.bias is not None:
-                module.bias.data.zero_()
-        elif isinstance(module, nn.GRUCell):
-            for mm in module.parameters():
-                if mm.data.ndimension() == 2:
-                    nn.init.xavier_normal_(mm.data, 1)
-                elif mm.data.ndimension() == 1:  # Bias
-                    mm.data.zero_()
-
-
-def reset_parameters_util_h(model):
-    for module in model.modules():
-        if isinstance(module, nn.Linear):
-            nn.init.kaiming_normal_(module.weight.data, 1)
-            if module.bias is not None:
-                module.bias.data.zero_()
-        elif isinstance(module, nn.GRUCell):
-            for mm in module.parameters():
-                if mm.data.ndimension() == 2:
-                    nn.init.kaiming_normal_(mm.data, 1)
-                elif mm.data.ndimension() == 1:  # Bias
-                    mm.data.zero_()
-
 
 class CapsConvLayer(nn.Module):
     def __init__(self, in_channels=3, out_channels=256, kernel_size=9):
