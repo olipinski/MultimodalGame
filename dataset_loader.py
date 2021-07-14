@@ -8,13 +8,11 @@ import copy
 
 from torchvision.utils import save_image
 from torch.autograd import Variable
-from skimage.transform import resize
 from nltk.tokenize import word_tokenize
 from PIL import Image, ImageDraw
 
 from shapeworld import dataset
 from misc import embed, cbow_general
-from utils.package_data import FeatureModel
 
 import torch
 import shapeworld as sw
@@ -36,24 +34,6 @@ def clean_and_tokenize(desc):
     return words
 
 
-def upscale(ims):
-    '''Upscales images to ResNet input size'''
-    (bs, width, height, ch) = ims.shape
-    new_ims = np.zeros((bs, 227, 227, 3))
-    for i in range(bs):
-        new_ims[i] = resize(ims[i], (227, 227))
-    return new_ims
-
-
-def downsize(ims, size):
-    '''Downsizes images'''
-    (bs, width, height, ch) = ims.shape
-    new_ims = np.zeros((bs, size, size, 3))
-    for i in range(bs):
-        new_ims[i] = resize(ims[i], (size, size))
-    return new_ims
-
-
 def generate_random_points(width, height):
     # print(width, height)
     pts = np.random.randint(0, width + height, 2)
@@ -67,29 +47,29 @@ def generate_random_points(width, height):
     else:
         pt2 = (pts[1], height - 1)
     # print(pt1, pt2)
-    return (pt1, pt2)
+    return pt1, pt2
 
 
 def get_points_for_masks(pt1, pt2, width, height):
-    A = (0, height - 1)
-    B = (width - 1, height - 1)
-    C = (0, 0)
-    D = (width - 1, 0)
+    a = (0, height - 1)
+    b = (width - 1, height - 1)
+    c = (0, 0)
+    d = (width - 1, 0)
     if pt1[0] != 0:
         if pt2[1] == height - 1:
-            points_im1 = [A, C, pt1, pt2]
-            points_im2 = [pt1, pt2, B, D]
+            points_im1 = [a, c, pt1, pt2]
+            points_im2 = [pt1, pt2, b, d]
         else:
-            points_im1 = [A, C, pt1, pt2, B]
-            points_im2 = [pt1, pt2, D]
+            points_im1 = [a, c, pt1, pt2, b]
+            points_im2 = [pt1, pt2, d]
     else:
         if pt2[1] == height - 1:
-            points_im1 = [A, pt1, pt2]
-            points_im2 = [pt1, C, D, B, pt2]
+            points_im1 = [a, pt1, pt2]
+            points_im2 = [pt1, c, d, b, pt2]
         else:
-            points_im1 = [A, pt1, pt2, B]
-            points_im2 = [pt1, C, D, pt2]
-    return (points_im1, points_im2)
+            points_im1 = [a, pt1, pt2, b]
+            points_im2 = [pt1, c, d, pt2]
+    return points_im1, points_im2
 
 
 def generate_mask(real_image):
@@ -114,11 +94,12 @@ def generate_mask(real_image):
 
 
 def convert_texts(texts, word_dict=None):
-    ''' Takes a dataset of n texts per example. Each example is a list of strings
+    """ Takes a dataset of n texts per example. Each example is a list of strings
     Returns: texts converted to lists of ints
-             If word_dict is not None (e.g. validation data texts) then word_dict is used to make the conversion and blank word2id and id2words are returned
+             If word_dict is not None (e.g. validation data texts) then word_dict is used to make the conversion
+             and blank word2id and id2words are returned
              If word_dict is None then the function also builds and returns a word2id idct, and an id2word dict
-    '''
+    """
     word2id = {'UNK': {"id": 0}} if word_dict is None else word_dict
     id2word = {0: 'UNK'} if word_dict is None else None
     texts_ints = []
@@ -146,21 +127,20 @@ def convert_texts(texts, word_dict=None):
                     curr_elem.append(word2id[w]["id"])
             assert len(curr_elem) == len(desc)
             curr_t.append(curr_elem)
-            curr_elem = []
         texts_ints.append(curr_t)
-        curr_t = []
     debuglogger.info(f'Num_examples: {num_texts}, Vocab size: {vocab_size}')
     return texts_ints, word2id, id2word
 
 
-def get_non_blank_partition(masked_im_1, masked_im_2):
-    '''Takes a pair of image partitions and returns the index partition that is not blank.
+def get_non_blank_partition(masked_im_1, masked_im_2, im_dim):
+    """Takes a pair of image partitions and returns the index partition that is not blank.
         1 = partition 1 is non blank
         2 = partition 1 is non blank
-        0 = both partitions are non blank'''
-    flat_1 = masked_im_1.numpy().reshape((3 * 227 * 227))
+        0 = both partitions are non blank
+    """
+    flat_1 = masked_im_1.numpy().reshape((3 * im_dim * im_dim))
     result_1 = flat_1[np.where(flat_1 > 0.0, np.where(flat_1 < 1.0, True, False), False)]
-    flat_2 = masked_im_2.numpy().reshape((3 * 227 * 227))
+    flat_2 = masked_im_2.numpy().reshape((3 * im_dim * im_dim))
     result_2 = flat_2[np.where(flat_2 > 0.0, np.where(flat_2 < 1.0, True, False), False)]
     if result_1.size != 0 and result_2.size != 0:
         return 0
@@ -173,7 +153,8 @@ def get_non_blank_partition(masked_im_1, masked_im_2):
         sys.exit()
 
 
-def load_shapeworld_dataset(data_path, embed_path, mode, size, ds_type, name, batch_size, random_seed, shuffle, img_feats, cuda, truncate_final_batch=False):
+def load_shapeworld_dataset(data_path, embed_path, mode, size, ds_type, name, batch_size, shuffle,
+                            cuda, truncate_final_batch=False, im_dim=128):
     """
     Reads ShapeWorld dataset into random num_batches
     Args:
@@ -184,11 +165,10 @@ def load_shapeworld_dataset(data_path, embed_path, mode, size, ds_type, name, ba
         - ds_type: problem type e.g. 'agreement'
         - name: name of dataset, e.g. 'oneshape_simple_textselect'
         - batch_size: size of each batch
-        - random_seed: int to use to set random seed
         - shuffle: whether to shuffle the dataset
-        - img_feats: what type of image features to use e.g. 'avgpool_512', 'layer4_2'
         - whether to use cuda
         - truncate_final_batch: whether to use a smaller final batch or not
+        - im_dim: the image size
 
     Each batch is a dict consisting of:
         batch = { "im_feats_1": im_feats_1,
@@ -234,15 +214,6 @@ def load_shapeworld_dataset(data_path, embed_path, mode, size, ds_type, name, ba
     texts_int, word2id, id2word = convert_texts(texts_str)
     word2id = embed(word2id, embed_path)
 
-    # Create feature extraction model
-    model = FeatureModel()
-    model.fn.eval()
-    model.eval()
-
-    if cuda:
-        model.fn.cuda()
-        model.cuda()
-
     # Shuffle
     if shuffle:
         random.shuffle(order)
@@ -261,10 +232,6 @@ def load_shapeworld_dataset(data_path, embed_path, mode, size, ds_type, name, ba
 
         # Upscale images and convert to tensors
         ims = generated['world'][batch_indices]
-        if FLAGS.improc_from_scratch:
-            ims = downsize(ims, FLAGS.image_size)
-        else:
-            ims = upscale(ims)
         batch['images'] = torch.from_numpy(ims).float().permute(0, 3, 1, 2)
 
         # Extract target and texts
@@ -350,17 +317,13 @@ def load_shapeworld_dataset(data_path, embed_path, mode, size, ds_type, name, ba
         if cuda:
             m_im_1 = m_im_1.cuda()
             m_im_2 = m_im_2.cuda()
-        if FLAGS.improc_from_scratch:
-            batch["im_feats_1"] = m_im_1
-            batch["im_feats_2"] = m_im_2
-        else:
-            batch["im_feats_1"] = (model(m_im_1, request=img_feats)[0]).detach()
-            batch["im_feats_2"] = (model(m_im_2, request=img_feats)[0]).detach()
+        batch["im_feats_1"] = m_im_1
+        batch["im_feats_2"] = m_im_2
 
         # Identify non blank partition
         non_blank_partition = []
         for j in range(batch_size):
-            idx = get_non_blank_partition(batch['masked_im_1'][j], batch['masked_im_2'][j])
+            idx = get_non_blank_partition(batch['masked_im_1'][j], batch['masked_im_2'][j], im_dim)
             non_blank_partition.append(idx)
         batch['non_blank_partition'] = non_blank_partition
 
@@ -380,13 +343,10 @@ if __name__ == "__main__":
 
     batch = (generated['world'], generated['classification'])
 
-
-
-
     # Settings
     gflags.DEFINE_enum("resnet", "34", ["18", "34", "50", "101", "152"], "Specify Resnet variant.")
-    gflags.DEFINE_boolean("improc_from_scratch", False, "Whether to train the image processor from scratch")
-    gflags.DEFINE_boolean("vertical_mask", False, "Whether to just use a vertical mask on images. Otherwise the mask is random")
+    gflags.DEFINE_boolean("vertical_mask", False, "Whether to just use a vertical mask on images. "
+                                                  "Otherwise the mask is random")
     gflags.DEFINE_integer("image_size", 128, "Width and height in pixels of the images to give to the agents")
     FLAGS(sys.argv)
 
@@ -401,7 +361,8 @@ if __name__ == "__main__":
     img_feats = 'avgpool_512'
     shuffle = True
     cuda = False
-    dataloader = load_shapeworld_dataset(data_path, embed_path, mode, size, ds_type, name, batch_size, random_seed, shuffle, img_feats, cuda, truncate_final_batch=False)
+    dataloader = load_shapeworld_dataset(data_path, embed_path, mode, size, ds_type, name, batch_size, shuffle,
+                                         cuda, truncate_final_batch=False)
     for i_batch, batch in enumerate(dataloader):
         # Test identify partition
         save_image(batch['images'], data_path + '/example_ims_orig_' + str(i_batch) + '.png', pad_value=0.5)
@@ -410,8 +371,10 @@ if __name__ == "__main__":
         print(f'Batch: {i_batch}, non blank partition: {batch["non_blank_partition"]}')
         # Save individual images
         for i in range(batch_size):
-            print(f'Batch: {i_batch}, i: {i}, Caption: {batch["caption_str"][i]}, shape: {batch["shapes"][i]}, colors: {batch["colors"][i]}')
-            print(f'Batch: {i_batch}, i: {i}, Texts: {batch["texts_str"][i]}, shape: {batch["texts_shapes"][i]}, colors: {batch["texts_colors"][i]}')
+            print(f'Batch: {i_batch}, i: {i}, Caption: {batch["caption_str"][i]}, shape: {batch["shapes"][i]}, '
+                  f'colors: {batch["colors"][i]}')
+            print(f'Batch: {i_batch}, i: {i}, Texts: {batch["texts_str"][i]}, shape: {batch["texts_shapes"][i]}, '
+                  f'colors: {batch["texts_colors"][i]}')
             save_image(batch['masked_im_1'][i], f'{data_path}/example_ims_1_{i_batch}_{i}.png', pad_value=0.5)
             save_image(batch['masked_im_2'][i], f'{data_path}/example_ims_2_{i_batch}_{i}.png', pad_value=0.5)
         break

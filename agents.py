@@ -15,6 +15,7 @@ logging.basicConfig(format=FORMAT)
 debuglogger = logging.getLogger('main_logger')
 debuglogger.setLevel('INFO')
 
+
 class CapsConvLayer(nn.Module):
     def __init__(self, in_channels=3, out_channels=256, kernel_size=9):
         super(CapsConvLayer, self).__init__()
