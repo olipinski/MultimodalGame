@@ -3700,6 +3700,7 @@ def flags():
     gflags.DEFINE_boolean(
         "use_MLP", False, "use MLP to generate prediction scores")
     gflags.DEFINE_integer("attn_dim", 256, "")
+    gflags.DEFINE_integer("random_seed", 7, "")
     gflags.DEFINE_boolean("attn_extra_context", False, "")
     gflags.DEFINE_integer("attn_context_dim", 4096, "")
     gflags.DEFINE_float("dropout", 0.3, "How much dropout to apply when training using the original image")
