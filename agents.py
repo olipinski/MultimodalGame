@@ -319,7 +319,6 @@ class Agent(nn.Module):
 
         """
         self.h_z = None
-        self.image_processor.reset_state()
 
     def initial_state(self, batch_size):
         h = _Variable(torch.zeros(batch_size, self.h_dim))
