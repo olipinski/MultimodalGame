@@ -2018,6 +2018,7 @@ def exchange(a1, a2, exchange_args):
     corrupt_region = exchange_args.get("corrupt_region", None)
     test_language_similarity = exchange_args.get("test_language_similarity", False)
     batch_size = data["im_feats_1"].size(0)
+    debuglogger.debug(f'im_feats_1 shape {data["im_feats_1"].size(0)}')
 
     # Pad with one column of ones.
     stop_mask_1 = [Variable(torch.ones(batch_size, 1).byte())]
