@@ -2880,10 +2880,9 @@ def run():
         # Read dataset randomly into batches
         if FLAGS.dataset == "shapeworld":
             dataloader = load_shapeworld_dataset(FLAGS.dataset_path, FLAGS.glove_path, FLAGS.dataset_mode,
-                                                 FLAGS.dataset_size_train, FLAGS.dataset_type,
-                                                 FLAGS.dataset_name, FLAGS.batch_size, FLAGS.random_seed,
-                                                 FLAGS.shuffle_train, FLAGS.img_feat, FLAGS.cuda,
-                                                 truncate_final_batch=False)
+                                                 FLAGS.dataset_size_train, FLAGS.dataset_type, FLAGS.dataset_name,
+                                                 FLAGS.batch_size, FLAGS.shuffle_train, FLAGS.cuda,
+                                                 truncate_final_batch=False, im_dim=FLAGS.image_size)
         else:
             raise NotImplementedError
 
@@ -3639,9 +3638,6 @@ def flags():
         "glove_path", "./glove.6B/glove.6B.100d.txt", "")
     gflags.DEFINE_boolean("shuffle_train", True, "")
     gflags.DEFINE_boolean("shuffle_dev", False, "")
-    gflags.DEFINE_integer("random_seed", 7, "")
-    gflags.DEFINE_enum(
-        "resnet", "34", ["18", "34", "50", "101", "152"], "Specify Resnet variant.")
     gflags.DEFINE_integer("image_size", 128, "Width and height in pixels of the images to give to the agents")
     gflags.DEFINE_boolean("vertical_mask", False,
                           "Whether to just use a vertical mask on images. Otherwise the mask is random")
