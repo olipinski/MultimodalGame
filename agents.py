@@ -169,7 +169,8 @@ class MessageProcessor(nn.Module):
     def forward(self, m, h, use_message):
         debuglogger.debug(f'Now in Message Processor')
         debuglogger.debug(f'm shape {m.shape}')
-        debuglogger.debug(f'h shape {h.shape}')
+        if h is not None:
+            debuglogger.debug(f'h shape {h.shape}')
         debuglogger.debug(f'use_message {use_message}')
         if self.use_cuda:
             h = h.cuda()
