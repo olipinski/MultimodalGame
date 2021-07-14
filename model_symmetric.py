@@ -1872,7 +1872,8 @@ def eval_community(eval_list, models_dict, dev_accuracy_log, logger, flogger, ep
                                            s_dim=FLAGS.s_dim,
                                            use_binary=FLAGS.use_binary,
                                            use_mlp=FLAGS.use_MLP,
-                                           cuda=FLAGS.cuda)
+                                           cuda=FLAGS.cuda,
+                                           gpu_count=FLAGS.gpu_count)
                             agent2.load_state_dict(agent1.state_dict())
                             if FLAGS.cuda:
                                 agent2.cuda()
@@ -1903,7 +1904,8 @@ def eval_community(eval_list, models_dict, dev_accuracy_log, logger, flogger, ep
                                        s_dim=FLAGS.s_dim,
                                        use_binary=FLAGS.use_binary,
                                        use_mlp=FLAGS.use_MLP,
-                                       cuda=FLAGS.cuda)
+                                       cuda=FLAGS.cuda,
+                                       gpu_count=FLAGS.gpu_count)
                         agent2.load_state_dict(agent1.state_dict())
                         if FLAGS.cuda:
                             agent2.cuda()
@@ -2017,8 +2019,7 @@ def exchange(a1, a2, exchange_args):
     corrupt = exchange_args.get("corrupt", False)
     corrupt_region = exchange_args.get("corrupt_region", None)
     test_language_similarity = exchange_args.get("test_language_similarity", False)
-    batch_size = data["im_feats_1"].size(0)/FLAGS.gpu_count
-    batch_size = int(batch_size)
+    batch_size = data["im_feats_1"].size(0)
 
     # Pad with one column of ones.
     stop_mask_1 = [Variable(torch.ones(batch_size, 1).byte())]
@@ -2454,7 +2455,8 @@ def run(rng):
                       s_dim=FLAGS.s_dim,
                       use_binary=FLAGS.use_binary,
                       use_mlp=FLAGS.use_MLP,
-                      cuda=FLAGS.cuda)
+                      cuda=FLAGS.cuda,
+                      gpu_count=FLAGS.gpu_count)
 
         if FLAGS.cuda:
             agent.cuda()
@@ -2635,7 +2637,8 @@ def run(rng):
                                        s_dim=FLAGS.s_dim,
                                        use_binary=FLAGS.use_binary,
                                        use_mlp=FLAGS.use_MLP,
-                                       cuda=FLAGS.cuda)
+                                       cuda=FLAGS.cuda,
+                                       gpu_count=FLAGS.gpu_count)
                         agent2.load_state_dict(agent1.state_dict())
                         if FLAGS.cuda:
                             agent2.cuda()
@@ -2986,7 +2989,8 @@ def run(rng):
                                s_dim=FLAGS.s_dim,
                                use_binary=FLAGS.use_binary,
                                use_mlp=FLAGS.use_MLP,
-                               cuda=FLAGS.cuda)
+                               cuda=FLAGS.cuda,
+                               gpu_count=FLAGS.gpu_count)
                 agent2.load_state_dict(agent1.state_dict())
                 if FLAGS.cuda:
                     agent2.cuda()
@@ -3434,7 +3438,8 @@ def run(rng):
                                    s_dim=FLAGS.s_dim,
                                    use_binary=FLAGS.use_binary,
                                    use_mlp=FLAGS.use_MLP,
-                                   cuda=FLAGS.cuda)
+                                   cuda=FLAGS.cuda,
+                                   gpu_count=FLAGS.gpu_count)
                     agent2.load_state_dict(agent1.state_dict())
                     if FLAGS.cuda:
                         agent2.cuda()
@@ -3467,7 +3472,8 @@ def run(rng):
                                             s_dim=FLAGS.s_dim,
                                             use_binary=FLAGS.use_binary,
                                             use_mlp=FLAGS.use_MLP,
-                                            cuda=FLAGS.cuda)
+                                            cuda=FLAGS.cuda,
+                                            gpu_count=FLAGS.gpu_count)
                             _agent2.load_state_dict(agent1.state_dict())
                             if FLAGS.cuda:
                                 _agent2.cuda()

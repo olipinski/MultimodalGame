@@ -282,7 +282,8 @@ class Agent(nn.Module):
                  use_mlp,
                  cuda,
                  num_capsules_l1,
-                 route_mult
+                 route_mult,
+                 gpu_count
                  ):
         super(Agent, self).__init__()
         self.im_feat_dim = im_dim
@@ -295,6 +296,7 @@ class Agent(nn.Module):
         self.use_MLP = use_mlp
         self.use_cuda = cuda
         self.num_capsules_l1 = num_capsules_l1
+        self.gpu_count = gpu_count
         self.image_processor = ImageProcessor(im_dim=im_dim, hid_dim=h_dim, num_capsules_l1=num_capsules_l1,
                                               use_cuda=cuda, route_multiple=route_mult)
         self.text_processor = TextProcessor(desc_dim=desc_dim, hid_dim=h_dim)
@@ -333,7 +335,7 @@ class Agent(nn.Module):
         self.h_z = None
 
     def initial_state(self, batch_size):
-        h = _Variable(torch.zeros(batch_size, self.h_dim))
+        h = _Variable(torch.zeros(int(batch_size/self.gpu_count), self.h_dim))
         if self.use_cuda:
             h = h.cuda()
         return h
@@ -494,6 +496,7 @@ if __name__ == "__main__":
     dropout = 0.3
     use_MLP = False
     cuda = True
+    gpu_count = 1
     agent = Agent(im_dim,
                   h_dim,
                   m_dim,
@@ -504,7 +507,8 @@ if __name__ == "__main__":
                   use_MLP,
                   cuda,
                   num_capsules_l1,
-                  route_mult
+                  route_mult,
+                  gpu_count
                   )
 
     x = _Variable(torch.ones(batch_size, 3, im_dim, im_dim))
