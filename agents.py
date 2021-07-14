@@ -332,12 +332,6 @@ class Agent(nn.Module):
         """
         self.h_z = None
 
-    def initial_state(self, batch_size):
-        h = _Variable(torch.zeros(batch_size, self.h_dim))
-        if self.use_cuda:
-            h = h.cuda()
-        return h
-
     def predict_classes(self, h_c, desc_proc, batch_size):
         """
         Scores each class using an MLP or simple dot product
@@ -413,10 +407,6 @@ class Agent(nn.Module):
         debuglogger.debug(f'm: {m.size()}')
         debuglogger.debug(f'm: {m}')
         debuglogger.debug(f'desc: {desc.size()}')
-
-        # Initialize hidden state if necessary
-        if self.h_z is None:
-            self.h_z = self.initial_state(batch_size)
 
         # Process message sent from the other agent
         self.h_z = self.message_processor(m, self.h_z, use_message)

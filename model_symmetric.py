@@ -2061,7 +2061,7 @@ def exchange(a1, a2, exchange_args):
         debuglogger.warning(f'Data context not supported currently')
         sys.exit()
     else:
-        # debuglogger.info(f'Inside exchange: Train status: {train}, Message: {m_binary}')
+        debuglogger.info(f'Inside exchange: Train status: {train}, Message: {m_binary}')
         s_1e, m_1e, y_1e, r_1e = agent1(
             data['im_feats_1'],
             m_binary,
