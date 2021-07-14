@@ -2017,7 +2017,7 @@ def exchange(a1, a2, exchange_args):
     corrupt = exchange_args.get("corrupt", False)
     corrupt_region = exchange_args.get("corrupt_region", None)
     test_language_similarity = exchange_args.get("test_language_similarity", False)
-    batch_size = data["im_feats_1"].size(0)
+    batch_size = data["im_feats_1"].size(0)/FLAGS.gpu_count
     debuglogger.debug(f'im_feats_1 shape {data["im_feats_1"].size(0)}')
 
     # Pad with one column of ones.
@@ -3562,6 +3562,7 @@ def flags():
 
     # Performance settings
     gflags.DEFINE_boolean("cuda", False, "")
+    gflags.DEFINE_integer("gpu_count", 1, "")
 
     # Display settings
     gflags.DEFINE_string("env", "main", "")
