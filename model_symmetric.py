@@ -14,6 +14,7 @@ import torch.nn.functional as F
 import torch.nn as nn
 import torch.optim as optim
 from torchvision.utils import save_image
+#from torch.nn.parallel import DistributedDataParallel as DDP
 
 from sklearn.metrics import confusion_matrix
 
@@ -1875,6 +1876,7 @@ def eval_community(eval_list, models_dict, dev_accuracy_log, logger, flogger, ep
                             agent2.load_state_dict(agent1.state_dict())
                             if FLAGS.cuda:
                                 agent2.cuda()
+                            agent2 = torch.nn.DataParallel(agent2)
                         domain = f'In Domain Dev: Agent {i + 1} | Agent {j + 1}, ids [{id(agent1)}]/[{id(agent2)}]: '
                         _, _ = get_and_log_dev_performance(agent1, agent2, FLAGS.dataset_indomain_valid_path, True,
                                                            dev_accuracy_log, logger, flogger, domain, epoch, step,
@@ -1905,6 +1907,7 @@ def eval_community(eval_list, models_dict, dev_accuracy_log, logger, flogger, ep
                         agent2.load_state_dict(agent1.state_dict())
                         if FLAGS.cuda:
                             agent2.cuda()
+                        agent2 = torch.nn.DataParallel(agent2)
                     domain = f'In Domain Dev: Agent {i + 1} | Agent {j + 1}, ids [{id(agent1)}]/[{id(agent2)}]: '
                     _, _ = get_and_log_dev_performance(agent1, agent2, FLAGS.dataset_indomain_valid_path, True,
                                                        dev_accuracy_log, logger, flogger, domain, epoch, step, i_batch,
@@ -1913,8 +1916,8 @@ def eval_community(eval_list, models_dict, dev_accuracy_log, logger, flogger, ep
 
 def corrupt_message(corrupt_region, agent, binary_message):
     # Obtain mask
-    mask = Variable(build_mask(corrupt_region, agent.m_dim))
-    mask_broadcast = mask.view(1, agent.m_dim).expand_as(binary_message)
+    mask = Variable(build_mask(corrupt_region, agent.module.m_dim))
+    mask_broadcast = mask.view(1, agent.module.m_dim).expand_as(binary_message)
     # Subtract the mask to change values, but need to get absolute value
     # to set -1 values to 1 to essentially "flip" all the bits.
     binary_message = (binary_message - mask_broadcast).abs()
@@ -2035,7 +2038,7 @@ def exchange(a1, a2, exchange_args):
     r_2 = []
 
     # First message (default is 0)
-    m_binary = Variable(torch.FloatTensor(batch_size, agent1.m_dim).fill_(
+    m_binary = Variable(torch.FloatTensor(batch_size, agent1.module.m_dim).fill_(
         FLAGS.first_msg), volatile=not train)
     if FLAGS.cuda:
         m_binary = m_binary.cuda()
@@ -2452,22 +2455,26 @@ def run(rng):
                       use_mlp=FLAGS.use_MLP,
                       cuda=FLAGS.cuda)
 
+        if FLAGS.cuda:
+            agent.cuda()
+        agent = torch.nn.DataParallel(agent)
+
         flogger.Log("Agent {} id: {} Architecture: {}".format(_ + 1, id(agent), agent))
         total_params = sum([functools.reduce(lambda x, y: x * y, p.size(), 1.0)
-                            for p in agent.parameters()])
+                            for p in agent.module.parameters()])
         flogger.Log("Total Parameters: {}".format(total_params))
         agents.append(agent)
 
         # Optimizer
         if FLAGS.optim_type == "SGD":
             optimizer_agent = optim.SGD(
-                agent.parameters(), lr=FLAGS.learning_rate)
+                agent.module.parameters(), lr=FLAGS.learning_rate)
         elif FLAGS.optim_type == "Adam":
             optimizer_agent = optim.Adam(
-                agent.parameters(), lr=FLAGS.learning_rate)
+                agent.module.parameters(), lr=FLAGS.learning_rate)
         elif FLAGS.optim_type == "RMSprop":
             optimizer_agent = optim.RMSprop(
-                agent.parameters(), lr=FLAGS.learning_rate)
+                agent.module.parameters(), lr=FLAGS.learning_rate)
         else:
             raise NotImplementedError
 
@@ -2631,6 +2638,7 @@ def run(rng):
                         agent2.load_state_dict(agent1.state_dict())
                         if FLAGS.cuda:
                             agent2.cuda()
+                        agent2 = torch.nn.DataParallel(agent2)
                     if i == 0 and j == 0:
                         # Report in domain development accuracy and store examples TODO: Store examples currently
                         #  disabled. To fix store examples - image saving disabled because it clogs the memory and
@@ -2981,6 +2989,7 @@ def run(rng):
                 agent2.load_state_dict(agent1.state_dict())
                 if FLAGS.cuda:
                     agent2.cuda()
+                agent2 = torch.nn.DataParallel(agent2)
             debuglogger.debug(f'Agent 1: {agent_idxs[0]}, Agent 1: {agent_idxs[1]}')
 
             # Converted to Variable in get_classification_loss_and_stats
@@ -3428,6 +3437,7 @@ def run(rng):
                     agent2.load_state_dict(agent1.state_dict())
                     if FLAGS.cuda:
                         agent2.cuda()
+                    agent2 = torch.nn.DataParallel(agent2)
                     flogger.Log("Agent {} self communication: id {}".format(i + 1, id(agent)))
                     dev_accuracy_self_com[i], total_accuracy_com = get_and_log_dev_performance(
                         agent1, agent2, FLAGS.dataset_indomain_valid_path, True, dev_accuracy_self_com[i], logger,
@@ -3460,8 +3470,10 @@ def run(rng):
                             _agent2.load_state_dict(agent1.state_dict())
                             if FLAGS.cuda:
                                 _agent2.cuda()
+                            _agent2 = torch.nn.DataParallel(_agent2)
                         else:
                             _agent2 = models_dict["agent" + str(j + 1)]
+                            _agent2 = torch.nn.DataParallel(_agent2)
                         dev_accuracy_id_pairs[i], total_accuracy_com = get_and_log_dev_performance(
                             _agent1, _agent2, FLAGS.dataset_indomain_valid_path, True, dev_accuracy_id_pairs[i], logger,
                             flogger, f'Average Check: In Domain: Agents {i + 1},{j + 1}', epoch, step, i_batch,
