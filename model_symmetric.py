@@ -2065,7 +2065,6 @@ def exchange(a1, a2, exchange_args):
         s_1e, m_1e, y_1e, r_1e = agent1(
             data['im_feats_1'],
             m_binary,
-            0,
             desc,
             use_message,
             batch_size,
@@ -2074,7 +2073,6 @@ def exchange(a1, a2, exchange_args):
         s_2e, m_2e, y_2e, r_2e = agent2(
             data['im_feats_2'],
             m_binary,
-            0,
             desc,
             use_message,
             batch_size,

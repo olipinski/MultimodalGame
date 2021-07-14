@@ -362,11 +362,6 @@ class Agent(nn.Module):
 
         Image processing
             h_i = image_processor(x, h_z)
-            Image Attention (https://arxiv.org/pdf/1502.03044.pdf):
-                \beta_i = U tanh(W_r h_z + W_x x_i)
-                \alpha = 1 / |x|        if t == 0
-                \alpha = softmax(\beta) otherwise
-                x = \sum_i \alpha x_i
 
         Combine Image and Message information
             h_c = text_im_combine(h_z, h_i)
