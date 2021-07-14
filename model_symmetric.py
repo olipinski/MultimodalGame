@@ -464,8 +464,8 @@ def get_similarity(dataset_path, in_domain_eval, agent1, agent2, a1_group, a2_gr
         debuglogger.info("Evaluating on out of domain validation set")
     dev_loader = load_shapeworld_dataset(dataset_path, FLAGS.glove_path, eval_mode, FLAGS.dataset_size_dev,
                                          FLAGS.dataset_type, FLAGS.dataset_name, FLAGS.batch_size_dev,
-                                         FLAGS.random_seed, FLAGS.shuffle_dev, FLAGS.img_feat, FLAGS.cuda,
-                                         truncate_final_batch=False)
+                                         FLAGS.shuffle_dev, FLAGS.cuda, truncate_final_batch=False,
+                                         im_dim=FLAGS.image_size)
 
     _batch_counter = 0
     for batch in dev_loader:
@@ -1132,8 +1132,8 @@ def eval_dev(dataset_path, top_k, agent1, agent2, logger, flogger, epoch, step, 
         debuglogger.info("Evaluating on out of domain validation set")
     dev_loader = load_shapeworld_dataset(dataset_path, FLAGS.glove_path, eval_mode, FLAGS.dataset_size_dev,
                                          FLAGS.dataset_type, FLAGS.dataset_name, FLAGS.batch_size_dev,
-                                         FLAGS.random_seed, FLAGS.shuffle_dev, FLAGS.img_feat, FLAGS.cuda,
-                                         truncate_final_batch=False)
+                                         FLAGS.shuffle_dev, FLAGS.cuda, truncate_final_batch=False,
+                                         im_dim=FLAGS.image_size)
 
     _batch_counter = 0
     for batch in dev_loader:
@@ -1862,8 +1862,7 @@ def eval_community(eval_list, models_dict, dev_accuracy_log, logger, flogger, ep
                         agent_tag = f'A_{i + 1}_{j + 1}'
                         if i == j:
                             # Create a copy of agents playing with themselves to avoid sharing the hidden state
-                            agent2 = Agent(im_feature_type=FLAGS.img_feat,
-                                           im_feat_dim=FLAGS.img_feat_dim,
+                            agent2 = Agent(im_dim=FLAGS.image_size,
                                            h_dim=FLAGS.h_dim,
                                            m_dim=FLAGS.m_dim,
                                            num_capsules_l1=FLAGS.num_capsules_l1,
@@ -1893,8 +1892,7 @@ def eval_community(eval_list, models_dict, dev_accuracy_log, logger, flogger, ep
                     agent_tag = f'A_{i + 1}_{j + 1}'
                     if i == j:
                         # Create a copy of agents playing with themselves to avoid sharing the hidden state
-                        agent2 = Agent(im_feature_type=FLAGS.img_feat,
-                                       im_feat_dim=FLAGS.img_feat_dim,
+                        agent2 = Agent(im_dim=FLAGS.image_size,
                                        h_dim=FLAGS.h_dim,
                                        m_dim=FLAGS.m_dim,
                                        num_capsules_l1=FLAGS.num_capsules_l1,
@@ -2443,8 +2441,7 @@ def run():
 
     # Create agents
     for _ in range(FLAGS.num_agents):
-        agent = Agent(im_feature_type=FLAGS.img_feat,
-                      im_feat_dim=FLAGS.img_feat_dim,
+        agent = Agent(im_dim=FLAGS.image_size,
                       h_dim=FLAGS.h_dim,
                       m_dim=FLAGS.m_dim,
                       num_capsules_l1=FLAGS.num_capsules_l1,
@@ -2621,8 +2618,7 @@ def run():
                     agent2 = models_dict["agent" + str(j + 1)]
                     if i == j:
                         # Create a copy of agents playing with themselves to avoid sharing the hidden state
-                        agent2 = Agent(im_feature_type=FLAGS.img_feat,
-                                       im_feat_dim=FLAGS.img_feat_dim,
+                        agent2 = Agent(im_dim=FLAGS.image_size,
                                        h_dim=FLAGS.h_dim,
                                        m_dim=FLAGS.m_dim,
                                        num_capsules_l1=FLAGS.num_capsules_l1,
@@ -2972,8 +2968,7 @@ def run():
 
             # Create a copy of agents playing with themselves to avoid sharing the hidden state
             if FLAGS.num_agents == 1 or (agent_idxs[0] == agent_idxs[1]):
-                agent2 = Agent(im_feature_type=FLAGS.img_feat,
-                               im_feat_dim=FLAGS.img_feat_dim,
+                agent2 = Agent(im_dim=FLAGS.image_size,
                                h_dim=FLAGS.h_dim,
                                m_dim=FLAGS.m_dim,
                                num_capsules_l1=FLAGS.num_capsules_l1,
@@ -3420,8 +3415,7 @@ def run():
                 for i in range(FLAGS.num_agents):
                     agent1 = models_dict["agent" + str(i + 1)]
                     # Create a copy of agents playing with themselves to avoid sharing the hidden state
-                    agent2 = Agent(im_feature_type=FLAGS.img_feat,
-                                   im_feat_dim=FLAGS.img_feat_dim,
+                    agent2 = Agent(im_dim=FLAGS.image_size,
                                    h_dim=FLAGS.h_dim,
                                    m_dim=FLAGS.m_dim,
                                    num_capsules_l1=FLAGS.num_capsules_l1,
@@ -3453,8 +3447,7 @@ def run():
                         _agent1 = models_dict["agent" + str(i + 1)]
                         if i == j:
                             # Create a copy of agents playing with themselves to avoid sharing the hidden state
-                            _agent2 = Agent(im_feature_type=FLAGS.img_feat,
-                                            im_feat_dim=FLAGS.img_feat_dim,
+                            _agent2 = Agent(im_dim=FLAGS.image_size,
                                             h_dim=FLAGS.h_dim,
                                             m_dim=FLAGS.m_dim,
                                             num_capsules_l1=FLAGS.num_capsules_l1,
@@ -3513,50 +3506,6 @@ def run():
         epoch += 1
 
     flogger.Log("Finished training.")
-
-
-"""
-Preset Model Configurations
-
-1. Fixed - Fixed conversation length.
-2. Adaptive - Adaptive conversation length using STOP bit.
-3. FixedAttention - Fixed with Visual Attention.
-4. AdaptiveAttention - Adaptive with Visual Attention.
-"""
-
-
-def Fixed():
-    FLAGS.img_feat = "avgpool_512"
-    FLAGS.img_feat_dim = 512
-    FLAGS.fixed_exchange = True
-    FLAGS.visual_attn = False
-
-
-def Adaptive():
-    FLAGS.img_feat = "avgpool_512"
-    FLAGS.img_feat_dim = 512
-    FLAGS.fixed_exchange = False
-    FLAGS.visual_attn = False
-
-
-def FixedAttention():
-    FLAGS.img_feat = "layer4_2"
-    FLAGS.img_feat_dim = 512
-    FLAGS.fixed_exchange = True
-    FLAGS.visual_attn = True
-    FLAGS.attn_dim = 256
-    FLAGS.attn_extra_context = False
-    FLAGS.attn_context_dim = 1000
-
-
-def AdaptiveAttention():
-    FLAGS.img_feat = "layer4_2"
-    FLAGS.img_feat_dim = 512
-    FLAGS.fixed_exchange = False
-    FLAGS.visual_attn = True
-    FLAGS.attn_dim = 256
-    FLAGS.attn_extra_context = True
-    FLAGS.attn_context_dim = 1000
 
 
 def flags():
@@ -3643,14 +3592,6 @@ def flags():
                           "Whether to just use a vertical mask on images. Otherwise the mask is random")
 
     # Model settings
-    gflags.DEFINE_enum("model_type", None, [
-        "Fixed", "Adaptive", "FixedAttention", "AdaptiveAttention"], "Preset model configurations.")
-    gflags.DEFINE_enum("img_feat", "avgpool_512", [
-        "layer4_2", "avgpool_512", "fc"], "Specify which layer output to use as image")
-    gflags.DEFINE_enum("data_context", "fc", [
-        "fc"], "Specify which layer output to use as context for attention")
-    gflags.DEFINE_integer("img_feat_dim", 512,
-                          "Dimension of the image features")
     gflags.DEFINE_integer(
         "h_dim", 100, "Hidden dimension for all hidden representations in the network")
     gflags.DEFINE_integer("m_dim", 64, "Dimension of the messages")
@@ -3736,10 +3677,6 @@ def default_flags():
         for k in log_flags.keys():
             if k in FLAGS.FlagValuesDict().keys():
                 setattr(FLAGS, k, log_flags[k])
-        FLAGS(sys.argv)  # Optionally override predefined flags.
-
-    if FLAGS.model_type:
-        eval(FLAGS.model_type)()
         FLAGS(sys.argv)  # Optionally override predefined flags.
 
     if not FLAGS.use_binary:

@@ -107,12 +107,12 @@ class CapsShapeLayer(nn.Module):
 class ImageProcessor(nn.Module):
     """Processes an agent's image, with or without attention"""
 
-    def __init__(self, im_feat_dim, hid_dim, num_capsules_l1, use_cuda, route_multiple):
+    def __init__(self, im_dim, hid_dim, num_capsules_l1, use_cuda, route_multiple):
         super(ImageProcessor, self).__init__()
         self.reset_parameters()
         self.hid_dim = np.sqrt(hid_dim).astype(int)
         # Dimensions after convolutions for auto scaling
-        conv_dim_1 = conv_output_shape((im_feat_dim, im_feat_dim), 9, 1, 0, 1)
+        conv_dim_1 = conv_output_shape((im_dim, im_dim), 9, 1, 0, 1)
         conv_dim_2 = conv_output_shape(conv_dim_1, 9, 2, 0, 1)
         self.capsConvLayer = CapsConvLayer()
         self.capsPrimaryLayer = CapsPrimaryLayer(im_dim=conv_dim_2[0],
@@ -268,8 +268,7 @@ class RewardEstimator(nn.Module):
 
 class Agent(nn.Module):
     def __init__(self,
-                 im_feature_type,
-                 im_feat_dim,
+                 im_dim,
                  h_dim,
                  m_dim,
                  desc_dim,
@@ -282,8 +281,7 @@ class Agent(nn.Module):
                  route_mult
                  ):
         super(Agent, self).__init__()
-        self.im_feature_type = im_feature_type
-        self.im_feat_dim = im_feat_dim
+        self.im_feat_dim = im_dim
         self.h_dim = h_dim
         self.m_dim = m_dim
         self.desc_dim = desc_dim
@@ -293,7 +291,7 @@ class Agent(nn.Module):
         self.use_MLP = use_mlp
         self.use_cuda = cuda
         self.num_capsules_l1 = num_capsules_l1
-        self.image_processor = ImageProcessor(im_feat_dim=im_feat_dim, hid_dim=h_dim, num_capsules_l1=num_capsules_l1,
+        self.image_processor = ImageProcessor(im_dim=im_dim, hid_dim=h_dim, num_capsules_l1=num_capsules_l1,
                                               use_cuda=cuda, route_multiple=route_mult)
         self.text_processor = TextProcessor(desc_dim=desc_dim, hid_dim=h_dim)
         self.message_processor = MessageProcessor(m_dim=m_dim, hid_dim=h_dim, cuda=cuda)
@@ -476,8 +474,7 @@ class Agent(nn.Module):
 
 if __name__ == "__main__":
     print("Testing agent init and forward pass...")
-    im_feature_type = ""
-    im_feat_dim = 64
+    im_dim = 64
     # Hidden dimension must be power of 2
     h_dim = 256
     m_dim = 6
@@ -493,8 +490,7 @@ if __name__ == "__main__":
     dropout = 0.3
     use_MLP = False
     cuda = True
-    agent = Agent(im_feature_type,
-                  im_feat_dim,
+    agent = Agent(im_dim,
                   h_dim,
                   m_dim,
                   desc_dim,
@@ -507,7 +503,7 @@ if __name__ == "__main__":
                   route_mult
                   )
 
-    x = _Variable(torch.ones(batch_size, 3, im_feat_dim, im_feat_dim))
+    x = _Variable(torch.ones(batch_size, 3, im_dim, im_dim))
     m = _Variable(torch.ones(batch_size, m_dim))
     desc = _Variable(torch.ones(batch_size, num_classes, desc_dim))
 
