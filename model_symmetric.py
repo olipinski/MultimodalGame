@@ -3,7 +3,6 @@ import sys
 import json
 import time
 import numpy as np
-import random
 import copy
 import functools
 import logging
@@ -630,7 +629,7 @@ def get_similarity(dataset_path, in_domain_eval, agent1, agent2, a1_group, a2_gr
 
                             # Fix who goes first for all permutations in an example
                             exchange_args["use_given_who_goes_first"] = True
-                            if random.random() < 0.5:
+                            if rng.random() < 0.5:
                                 exchange_args["given_who_goes_first"] = 1
                             else:
                                 exchange_args["given_who_goes_first"] = 2
@@ -1989,7 +1988,7 @@ def exchange(a1, a2, exchange_args):
                 who_goes_first = 2
                 debuglogger.debug(f'Agent 2 communicates first')
         else:
-            if random.random() < 0.5:
+            if rng.random() < 0.5:
                 agent1 = a1
                 agent2 = a2
                 who_goes_first = 1
@@ -2373,7 +2372,7 @@ def get_classification_loss_and_stats(predictions, targets):
     return (dist, maxdist, argmax, ent, nll_loss, logs)
 
 
-def run():
+def run(rng):
     flogger = FileLogger(FLAGS.log_file)
     logger = Logger(
         env=FLAGS.env, experiment_name=FLAGS.experiment_name, enabled=FLAGS.visdom)
@@ -2928,18 +2927,18 @@ def run():
 
             # Select agents if training with pools or communities
             if FLAGS.agent_pools:
-                idx = random.randint(0, len(agents) - 1)
+                idx = rng.randint(0, len(agents) - 1)
                 agent1 = agents[idx]
                 optimizer_agent1 = optimizers_dict["optimizer_agent" + str(idx + 1)]
                 agent_idxs[0] = idx + 1
                 old_idx = idx
                 if FLAGS.with_replacement:
                     # Sampling second agent with replacement
-                    idx = random.randint(0, len(agents) - 1)
+                    idx = rng.randint(0, len(agents) - 1)
                 else:
                     # Sampling second agent without replacement
                     while idx == old_idx:
-                        idx = random.randint(0, len(agents) - 1)
+                        idx = rng.randint(0, len(agents) - 1)
                 agent2 = agents[idx]
                 optimizer_agent2 = optimizers_dict["optimizer_agent" + str(idx + 1)]
                 agent_idxs[1] = idx + 1
@@ -3751,10 +3750,8 @@ if __name__ == '__main__':
     debuglogger = logging.getLogger('main_logger')
     debuglogger.setLevel(FLAGS.debug_log_level)
     if FLAGS.random_seed != -1:
-        random.seed(FLAGS.random_seed)
-        np.random.seed(FLAGS.random_seed)
+        rng = np.random.default_rng(FLAGS.random_seed)
         torch.manual_seed(FLAGS.random_seed)
     else:
-        random.seed()
-        np.random.seed()
-    run()
+        rng = np.random.default_rng()
+    run(rng)
