@@ -2050,8 +2050,8 @@ def exchange(a1, a2, exchange_args):
         agent1.eval()
         agent2.eval()
 
-    agent1.reset_state()
-    agent2.reset_state()
+    agent1.module.reset_state()
+    agent2.module.reset_state()
 
     # The message is ignored initially
     use_message = False
