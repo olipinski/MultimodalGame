@@ -26,8 +26,10 @@ class CapsConvLayer(nn.Module):
                               )
 
     def forward(self, x):
+        debuglogger.debug(f'Now in CapsConvLayer')
         x = self.conv(x)
         x = F.relu(x)
+        debuglogger.debug(f'CapsConvLayer output shape {x.shape}')
         return x
 
 
@@ -47,10 +49,17 @@ class CapsPrimaryLayer(nn.Module):
         return output_tensor
 
     def forward(self, x):
+        debuglogger.debug(f'Now in CapsPrimaryLayer')
         u = [capsule(x) for capsule in self.capsules]
+        debuglogger.debug(f'Route Multiple {self.route_multiple}')
+        debuglogger.debug(f'Image Dims {self.im_dim}')
         u = torch.stack(u, dim=1)
+        debuglogger.debug(f'Second u shape {u.shape}')
         u = u.view(x.size(0), self.route_multiple * self.im_dim * self.im_dim, -1)
+        debuglogger.debug(f'Third u shape {u.shape}')
         u = self.squash(u)
+        debuglogger.debug(f'Last u shape {u.shape}')
+        debuglogger.debug(f'CapsPrimaryLayer Finished')
         return u
 
 
