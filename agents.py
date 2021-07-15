@@ -13,122 +13,116 @@ from misc import conv_output_shape, reset_parameters_util_x, reset_parameters_ut
 FORMAT = '[%(asctime)s %(levelname)s] %(message)s'
 logging.basicConfig(format=FORMAT)
 debuglogger = logging.getLogger('main_logger')
-debuglogger.setLevel('INFO')
+debuglogger.setLevel('DEBUG')
 
 
-class CapsConvLayer(nn.Module):
-    def __init__(self, in_channels=3, out_channels=256, kernel_size=9):
-        super(CapsConvLayer, self).__init__()
-        self.conv = nn.Conv2d(in_channels=in_channels,
-                              out_channels=out_channels,
-                              kernel_size=(kernel_size, kernel_size),
-                              stride=(1, 1)
-                              )
-
-    def forward(self, x):
-        debuglogger.debug(f'Now in CapsConvLayer')
-        x = self.conv(x)
-        x = F.relu(x)
-        debuglogger.debug(f'CapsConvLayer output shape {x.shape}')
-        return x
+def squash(input_tensor, dim=-1, epsilon=1e-7):
+    squared_norm = (input_tensor ** 2).sum(dim=dim, keepdim=True)
+    safe_norm = torch.sqrt(squared_norm + epsilon)
+    scale = squared_norm / (1 + squared_norm)
+    unit_vector = input_tensor / safe_norm
+    return scale * unit_vector
 
 
 class CapsPrimaryLayer(nn.Module):
-    def __init__(self, route_multiple=32, im_dim=6, num_capsules=8, in_channels=256, out_channels=32, kernel_size=9):
+    def __init__(self, in_channels, out_channels, kernel_size, stride, cap_dim, num_cap_map):
         super(CapsPrimaryLayer, self).__init__()
-        self.im_dim = im_dim
-        self.route_multiple = route_multiple
-        self.capsules = nn.ModuleList([
-            nn.Conv2d(in_channels=in_channels, out_channels=out_channels, kernel_size=(kernel_size, kernel_size),
-                      stride=(2, 2), padding=0)
-            for _ in range(num_capsules)])
 
-    def squash(self, input_tensor):
-        squared_norm = (input_tensor ** 2).sum(-1, keepdim=True)
-        output_tensor = squared_norm * input_tensor / ((1. + squared_norm) * torch.sqrt(squared_norm))
-        return output_tensor
+        self.capsule_dim = cap_dim
+        self.num_cap_map = num_cap_map
+        self.conv_out = nn.Conv2d(in_channels, out_channels, kernel_size, stride, padding=0)
 
     def forward(self, x):
         debuglogger.debug(f'Now in CapsPrimaryLayer')
-        u = [capsule(x) for capsule in self.capsules]
-        debuglogger.debug(f'Route Multiple {self.route_multiple}')
-        debuglogger.debug(f'Image Dims {self.im_dim}')
-        u = torch.stack(u, dim=1)
-        debuglogger.debug(f'Second u shape {u.shape}')
-        u = u.view(x.size(0), self.route_multiple * self.im_dim * self.im_dim, -1)
-        debuglogger.debug(f'Third u shape {u.shape}')
-        u = self.squash(u)
-        debuglogger.debug(f'Last u shape {u.shape}')
-        debuglogger.debug(f'CapsPrimaryLayer Finished')
-        return u
+        batch_size = x.size(0)
+        outputs = self.conv_out(x)
+        map_dim = outputs.size(-1)
+        outputs = outputs.view(batch_size, self.capsule_dim, self.num_cap_map, map_dim, map_dim)
+        # [bs, 8 (or 10), 32, 6, 6]
+        outputs = outputs.view(batch_size, self.capsule_dim, self.num_cap_map, -1).transpose(1, 2).transpose(2, 3)
+        # [bs, 32, 36, 8]
+        outputs = squash(outputs)
+        return outputs
 
 
 class CapsShapeLayer(nn.Module):
-    def __init__(self, im_dim=6, route_multiple=32, num_capsules=16, in_channels=8, out_channels=16, use_cuda=False):
+    def __init__(self, num_digit_cap, num_prim_cap, num_prim_map, in_cap_dim, out_cap_dim, num_iterations, use_cuda):
         super(CapsShapeLayer, self).__init__()
-        self.in_channels = in_channels
-        self.num_routes = route_multiple * im_dim * im_dim
-        self.num_capsules = num_capsules
+        self.num_prim_cap = num_prim_cap
+        self.num_prim_map = num_prim_map
+        self.num_digit_cap = num_digit_cap
+        self.num_iterations = num_iterations
+        self.out_cap_dim = out_cap_dim
         self.use_cuda = use_cuda
 
-        self.W = nn.Parameter(torch.randn(1, self.num_routes, num_capsules, out_channels, in_channels))
-
-    def squash(self, input_tensor):
-        squared_norm = (input_tensor ** 2).sum(-1, keepdim=True)
-        output_tensor = squared_norm * input_tensor / ((1. + squared_norm) * torch.sqrt(squared_norm))
-        return output_tensor
+        self.W = nn.Parameter(0.01 * torch.randn(1, num_digit_cap, num_prim_map, 1, out_cap_dim, in_cap_dim))
 
     def forward(self, x):
-        batch_size = x.size(0)
-        x = torch.stack([x] * self.num_capsules, dim=2).unsqueeze(4)
+        batch_size = x.size(0)  # [bs, 32, 36, 8]
+        u = x[:, None, :, :, :, None]  # [bs, 1, 32, 36, 8, 1]
+        u_hat = torch.matmul(self.W, u).squeeze(-1)  # [bs, 10, 32, 36, 16]
 
-        W = torch.cat([self.W] * batch_size, dim=0)
-        u_hat = torch.matmul(W, x)
+        # detach u_hat during routing iterations to prevent gradients from flowing
+        temp_u_hat = u_hat.detach()
 
-        b_ij = _Variable(torch.zeros(1, self.num_routes, self.num_capsules, 1))
+        b = torch.zeros(batch_size, self.num_digit_cap, u_hat.size(2), u_hat.size(3), 1)
         if self.use_cuda:
-            b_ij = b_ij.cuda()
+            b = b.cuda()
+        # [bs, 10, 32, 36, 1]
+        for i in range(self.num_iterations - 1):
+            c = F.softmax(b, dim=1)
+            s = (c * temp_u_hat).sum(dim=2).sum(dim=2)  # [bs, 10, 16]
+            v = squash(s)
+            # [bs, 10, 1152, 16] . [batch_size, 10, 16, 1]
+            uv = torch.matmul(temp_u_hat.view(batch_size, self.num_digit_cap, -1, self.out_cap_dim),
+                              v.unsqueeze(-1))  # [batch_size, 10, 1152, 1]
+            b += uv.view(b.shape)
 
-        num_iterations = 3
-        for iteration in range(num_iterations):
-            c_ij = F.softmax(b_ij)
-            c_ij = torch.cat([c_ij] * batch_size, dim=0).unsqueeze(4)
-
-            s_j = (c_ij * u_hat).sum(dim=1, keepdim=True)
-            v_j = self.squash(s_j)
-
-            if iteration < num_iterations - 1:
-                a_ij = torch.matmul(u_hat.transpose(3, 4), torch.cat([v_j] * self.num_routes, dim=1))
-                b_ij = b_ij + a_ij.squeeze(4).mean(dim=0, keepdim=True)
-
-        return v_j.squeeze(1).squeeze(-1)
+        c = F.softmax(b, dim=3)
+        s = (c * u_hat).sum(dim=2).sum(dim=2)
+        v = squash(s)
+        return v
 
 
 class ImageProcessor(nn.Module):
-    """Processes an agent's image, with or without attention"""
-
-    def __init__(self, im_dim, hid_dim, num_capsules_l1, use_cuda, route_multiple):
+    def __init__(self, img_c=3, f_conv1=256, k_conv1=9, s_conv1=1, f_prim=256, primary_cap_dim=8,
+                 k_prim=9, s_prim=2, img_h=128, shape_cap_dim=16, num_iterations=3, cuda=False, hid_dim=256):
         super(ImageProcessor, self).__init__()
-        self.reset_parameters()
-        self.hid_dim = np.sqrt(hid_dim).astype(int)
-        # Dimensions after convolutions for auto scaling
-        conv_dim_1 = conv_output_shape((im_dim, im_dim), 9, 1, 0, 1)
-        conv_dim_2 = conv_output_shape(conv_dim_1, 9, 2, 0, 1)
-        self.capsConvLayer = CapsConvLayer()
-        self.capsPrimaryLayer = CapsPrimaryLayer(im_dim=conv_dim_2[0],
-                                                 num_capsules=num_capsules_l1, route_multiple=route_multiple)
-        self.capsShapeLayer = CapsShapeLayer(im_dim=conv_dim_2[0], num_capsules=self.hid_dim,
-                                             use_cuda=use_cuda, route_multiple=route_multiple)
+
+        # convolution layer
+        self.conv1 = nn.Conv2d(in_channels=img_c, out_channels=f_conv1,
+                               kernel_size=(k_conv1, k_conv1), stride=(s_conv1, s_conv1))
+
+        # primary capsule layer
+        assert f_prim % primary_cap_dim == 0
+        self.num_prim_map = int(f_prim / primary_cap_dim)
+        self.primary_capsules = CapsPrimaryLayer(in_channels=f_conv1, out_channels=f_prim,
+                                                 kernel_size=k_prim, stride=s_prim,
+                                                 cap_dim=primary_cap_dim,
+                                                 num_cap_map=self.num_prim_map)
+        num_prim_cap = int((img_h - 2 * (k_prim - 1)) * (img_h - 2 * (k_prim - 1))
+                           / (s_prim * s_prim))
+
+        self.digit_capsules = CapsShapeLayer(num_digit_cap=num_classes,
+                                             num_prim_cap=num_prim_cap,
+                                             num_prim_map=self.num_prim_map,
+                                             in_cap_dim=primary_cap_dim,
+                                             out_cap_dim=shape_cap_dim,
+                                             num_iterations=num_iterations,
+                                             use_cuda=cuda)
+
+        self.im_transform = nn.Linear(img_c * shape_cap_dim, hid_dim)
+
+    def forward(self, imgs):
+        x = F.relu(self.conv1(imgs), inplace=True)
+        x = self.primary_capsules(x)
+        x = self.digit_capsules(x)
+        x = x.view(x.shape[0], -1)
+        x = self.im_transform(x)
+        return x
 
     def reset_parameters(self):
         reset_parameters_util_h(self)
-
-    def forward(self, x):
-        debuglogger.debug(f'Inside image processing...')
-        x = self.capsConvLayer(x)
-        x = self.capsPrimaryLayer(x)
-        x = self.capsShapeLayer(x)
-        return x.view(x.shape[0], -1)
 
 
 class TextProcessor(nn.Module):
@@ -281,9 +275,8 @@ class Agent(nn.Module):
                  use_binary,
                  use_mlp,
                  cuda,
-                 num_capsules_l1,
-                 route_mult,
-                 gpu_count
+                 pcd,
+                 scd
                  ):
         super(Agent, self).__init__()
         self.im_feat_dim = im_dim
@@ -295,17 +288,15 @@ class Agent(nn.Module):
         self.use_binary = use_binary
         self.use_MLP = use_mlp
         self.use_cuda = cuda
-        self.num_capsules_l1 = num_capsules_l1
-        self.gpu_count = gpu_count
-        self.image_processor = ImageProcessor(im_dim=im_dim, hid_dim=h_dim, num_capsules_l1=num_capsules_l1,
-                                              use_cuda=cuda, route_multiple=route_mult)
+        self.image_processor = ImageProcessor(img_h=im_dim, cuda=cuda, hid_dim=h_dim, primary_cap_dim=pcd,
+                                              shape_cap_dim=scd)
         self.text_processor = TextProcessor(desc_dim=desc_dim, hid_dim=h_dim)
         self.message_processor = MessageProcessor(m_dim=m_dim, hid_dim=h_dim, cuda=cuda)
         self.message_generator = MessageGenerator(m_dim=m_dim, hid_dim=h_dim, use_binary=use_binary)
         self.reward_estimator = RewardEstimator(hid_dim=h_dim)
         # Network for combining processed image and message representations
-        self.text_im_combine = nn.Linear(h_dim * 2, h_dim)
-        # Network for making predicitons
+        self.text_im_combine = nn.Linear(self.h_dim * 2, self.h_dim)
+        # Network for making predictions
         self.y1 = nn.Linear(self.h_dim * 2, self.h_dim)
         self.y2 = nn.Linear(self.h_dim, 1)
         # Network for making stop decision decisions
@@ -335,7 +326,7 @@ class Agent(nn.Module):
         self.h_z = None
 
     def initial_state(self, batch_size):
-        h = _Variable(torch.zeros(int(batch_size/self.gpu_count), self.h_dim))
+        h = _Variable(torch.zeros(batch_size, self.h_dim))
         if self.use_cuda:
             h = h.cuda()
         return h
@@ -429,7 +420,8 @@ class Agent(nn.Module):
         debuglogger.debug(f'h_i: {h_i.size()}')
 
         # Combine the image and message info to a single vector
-        h_c = self.text_im_combine(torch.cat([self.h_z, h_i], dim=1))
+        single_vector = torch.cat([self.h_z, h_i], dim=1)
+        h_c = self.text_im_combine(single_vector)
         debuglogger.debug(f'h_c: {h_c.size()}')
 
         # Process the texts
@@ -481,22 +473,19 @@ class Agent(nn.Module):
 if __name__ == "__main__":
     print("Testing agent init and forward pass...")
     im_dim = 64
-    # Hidden dimension must be power of 2
     h_dim = 256
     m_dim = 6
-    num_capsules_l1 = 8
-    route_mult = 32
+    pcd = 8
+    scd = 16
     desc_dim = 100
     num_classes = 3
     s_dim = 1
     use_binary = True
     use_message = True
-    batch_size = 8
+    batch_size = 32
     training = True
-    dropout = 0.3
     use_MLP = False
     cuda = True
-    gpu_count = 1
     agent = Agent(im_dim,
                   h_dim,
                   m_dim,
@@ -506,9 +495,8 @@ if __name__ == "__main__":
                   use_binary,
                   use_MLP,
                   cuda,
-                  num_capsules_l1,
-                  route_mult,
-                  gpu_count
+                  pcd,
+                  scd
                   )
 
     x = _Variable(torch.ones(batch_size, 3, im_dim, im_dim))

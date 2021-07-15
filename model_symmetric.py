@@ -14,7 +14,6 @@ import torch.nn.functional as F
 import torch.nn as nn
 import torch.optim as optim
 from torchvision.utils import save_image
-#from torch.nn.parallel import DistributedDataParallel as DDP
 
 from sklearn.metrics import confusion_matrix
 
@@ -1865,15 +1864,14 @@ def eval_community(eval_list, models_dict, dev_accuracy_log, logger, flogger, ep
                             agent2 = Agent(im_dim=FLAGS.image_size,
                                            h_dim=FLAGS.h_dim,
                                            m_dim=FLAGS.m_dim,
-                                           num_capsules_l1=FLAGS.num_capsules_l1,
-                                           route_mult=32,
                                            desc_dim=FLAGS.desc_dim,
                                            num_classes=FLAGS.num_classes,
                                            s_dim=FLAGS.s_dim,
                                            use_binary=FLAGS.use_binary,
                                            use_mlp=FLAGS.use_MLP,
                                            cuda=FLAGS.cuda,
-                                           gpu_count=FLAGS.gpu_count)
+                                           pcd=FLAGS.pcd,
+                                           scd=FLAGS.scd)
                             agent2.load_state_dict(agent1.state_dict())
                             if FLAGS.cuda:
                                 agent2.cuda()
@@ -1897,15 +1895,14 @@ def eval_community(eval_list, models_dict, dev_accuracy_log, logger, flogger, ep
                         agent2 = Agent(im_dim=FLAGS.image_size,
                                        h_dim=FLAGS.h_dim,
                                        m_dim=FLAGS.m_dim,
-                                       num_capsules_l1=FLAGS.num_capsules_l1,
-                                       route_mult=32,
                                        desc_dim=FLAGS.desc_dim,
                                        num_classes=FLAGS.num_classes,
                                        s_dim=FLAGS.s_dim,
                                        use_binary=FLAGS.use_binary,
                                        use_mlp=FLAGS.use_MLP,
                                        cuda=FLAGS.cuda,
-                                       gpu_count=FLAGS.gpu_count)
+                                       pcd=FLAGS.pcd,
+                                       scd=FLAGS.scd)
                         agent2.load_state_dict(agent1.state_dict())
                         if FLAGS.cuda:
                             agent2.cuda()
@@ -2286,7 +2283,7 @@ def calculate_loss_binary(binary_features, binary_probs, rewards, baseline_rewar
         (1 - Variable(binary_features.data)) * \
         torch.log(1 - binary_probs + 1e-8)
     log_p_z = log_p_z.sum(1)
-    weight = Variable(rewards) - Variable(baseline_rewards.clone().detach().data)
+    weight = Variable(rewards.clone().detach()) - Variable(baseline_rewards.clone().detach().data)
     if rewards.size(0) > 1:  # Ensures weights are not larger than 1
         weight = weight / np.maximum(1., torch.std(weight.data))
     loss = torch.mean(-1 * weight * log_p_z)
@@ -2446,15 +2443,14 @@ def run(rng):
         agent = Agent(im_dim=FLAGS.image_size,
                       h_dim=FLAGS.h_dim,
                       m_dim=FLAGS.m_dim,
-                      num_capsules_l1=FLAGS.num_capsules_l1,
-                      route_mult=32,
                       desc_dim=FLAGS.desc_dim,
                       num_classes=FLAGS.num_classes,
                       s_dim=FLAGS.s_dim,
                       use_binary=FLAGS.use_binary,
                       use_mlp=FLAGS.use_MLP,
                       cuda=FLAGS.cuda,
-                      gpu_count=FLAGS.gpu_count)
+                      pcd=FLAGS.pcd,
+                      scd=FLAGS.scd)
 
         if FLAGS.cuda:
             agent.cuda()
@@ -2628,15 +2624,14 @@ def run(rng):
                         agent2 = Agent(im_dim=FLAGS.image_size,
                                        h_dim=FLAGS.h_dim,
                                        m_dim=FLAGS.m_dim,
-                                       num_capsules_l1=FLAGS.num_capsules_l1,
-                                       route_mult=32,
                                        desc_dim=FLAGS.desc_dim,
                                        num_classes=FLAGS.num_classes,
                                        s_dim=FLAGS.s_dim,
                                        use_binary=FLAGS.use_binary,
                                        use_mlp=FLAGS.use_MLP,
                                        cuda=FLAGS.cuda,
-                                       gpu_count=FLAGS.gpu_count)
+                                       pcd=FLAGS.pcd,
+                                       scd=FLAGS.scd)
                         agent2.load_state_dict(agent1.state_dict())
                         if FLAGS.cuda:
                             agent2.cuda()
@@ -2980,15 +2975,14 @@ def run(rng):
                 agent2 = Agent(im_dim=FLAGS.image_size,
                                h_dim=FLAGS.h_dim,
                                m_dim=FLAGS.m_dim,
-                               num_capsules_l1=FLAGS.num_capsules_l1,
-                               route_mult=32,
                                desc_dim=FLAGS.desc_dim,
                                num_classes=FLAGS.num_classes,
                                s_dim=FLAGS.s_dim,
                                use_binary=FLAGS.use_binary,
                                use_mlp=FLAGS.use_MLP,
                                cuda=FLAGS.cuda,
-                               gpu_count=FLAGS.gpu_count)
+                               pcd=FLAGS.pcd,
+                               scd=FLAGS.scd)
                 agent2.load_state_dict(agent1.state_dict())
                 if FLAGS.cuda:
                     agent2.cuda()
@@ -3429,15 +3423,14 @@ def run(rng):
                     agent2 = Agent(im_dim=FLAGS.image_size,
                                    h_dim=FLAGS.h_dim,
                                    m_dim=FLAGS.m_dim,
-                                   num_capsules_l1=FLAGS.num_capsules_l1,
-                                   route_mult=32,
                                    desc_dim=FLAGS.desc_dim,
                                    num_classes=FLAGS.num_classes,
                                    s_dim=FLAGS.s_dim,
                                    use_binary=FLAGS.use_binary,
                                    use_mlp=FLAGS.use_MLP,
                                    cuda=FLAGS.cuda,
-                                   gpu_count=FLAGS.gpu_count)
+                                   pcd=FLAGS.pcd,
+                                   scd=FLAGS.scd)
                     agent2.load_state_dict(agent1.state_dict())
                     if FLAGS.cuda:
                         agent2.cuda()
@@ -3463,15 +3456,14 @@ def run(rng):
                             _agent2 = Agent(im_dim=FLAGS.image_size,
                                             h_dim=FLAGS.h_dim,
                                             m_dim=FLAGS.m_dim,
-                                            num_capsules_l1=FLAGS.num_capsules_l1,
-                                            route_mult=32,
                                             desc_dim=FLAGS.desc_dim,
                                             num_classes=FLAGS.num_classes,
                                             s_dim=FLAGS.s_dim,
                                             use_binary=FLAGS.use_binary,
                                             use_mlp=FLAGS.use_MLP,
                                             cuda=FLAGS.cuda,
-                                            gpu_count=FLAGS.gpu_count)
+                                            pcd=FLAGS.pcd,
+                                            scd=FLAGS.scd)
                             _agent2.load_state_dict(agent1.state_dict())
                             if FLAGS.cuda:
                                 _agent2.cuda()
@@ -3566,7 +3558,6 @@ def flags():
 
     # Performance settings
     gflags.DEFINE_boolean("cuda", False, "")
-    gflags.DEFINE_integer("gpu_count", 1, "")
 
     # Display settings
     gflags.DEFINE_string("env", "main", "")
@@ -3659,6 +3650,8 @@ def flags():
         "use_MLP", False, "use MLP to generate prediction scores")
     gflags.DEFINE_integer("attn_dim", 256, "")
     gflags.DEFINE_integer("random_seed", 7, "")
+    gflags.DEFINE_integer("pcd", 8, "Number of primary capsules")
+    gflags.DEFINE_integer("scd", 16, "Number of secondary capsules")
     gflags.DEFINE_boolean("attn_extra_context", False, "")
     gflags.DEFINE_integer("attn_context_dim", 4096, "")
     gflags.DEFINE_float("dropout", 0.3, "How much dropout to apply when training using the original image")
