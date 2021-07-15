@@ -2368,7 +2368,7 @@ def get_classification_loss_and_stats(predictions, targets):
     maxdist, argmax = dist.data.max(1)
     probs = F.softmax(predictions, dim=1)
     ent = (torch.log(probs + 1e-8) * probs).sum(1).mean()
-    debuglogger.debug(f'Mean entropy: {-ent.data[0]}')
+    debuglogger.debug(f'Mean entropy: {-ent.item()}')
     nll_loss = nn.NLLLoss()(dist, Variable(targets))
     logs = loglikelihood(Variable(dist.data),
                          Variable(targets.view(-1, 1)))
