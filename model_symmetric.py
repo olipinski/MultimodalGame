@@ -2285,7 +2285,7 @@ def calculate_loss_binary(binary_features, binary_probs, rewards, baseline_rewar
     log_p_z = log_p_z.sum(1)
     weight = Variable(rewards) - Variable(baseline_rewards.clone().detach().data)
     if rewards.size(0) > 1:  # Ensures weights are not larger than 1
-        max = np.maximum(1., torch.std(weight))
+        max = torch.maximum(1., torch.std(weight))
         if FLAGS.cuda:
             max = max.cuda()
         weight = weight / max
