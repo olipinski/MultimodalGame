@@ -2283,9 +2283,12 @@ def calculate_loss_binary(binary_features, binary_probs, rewards, baseline_rewar
         (1 - Variable(binary_features.data)) * \
         torch.log(1 - binary_probs + 1e-8)
     log_p_z = log_p_z.sum(1)
-    weight = Variable(rewards.clone().detach()) - Variable(baseline_rewards.clone().detach().data)
+    weight = Variable(rewards) - Variable(baseline_rewards.clone().detach().data)
     if rewards.size(0) > 1:  # Ensures weights are not larger than 1
-        weight = weight / np.maximum(1., torch.std(weight.data).cpu())
+        max = np.maximum(1., torch.std(weight))
+        if FLAGS.cuda:
+            max = max.cuda()
+        weight = weight / max
     loss = torch.mean(-1 * weight * log_p_z)
 
     # Must do both sides of negent, otherwise is skewed towards 0.
