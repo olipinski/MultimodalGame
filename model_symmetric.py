@@ -678,7 +678,7 @@ def get_similarity(dataset_path, in_domain_eval, agent1, agent2, a1_group, a2_gr
                             na, argmax_y2 = torch.max(y[1][-1], 1)
                             debuglogger.debug(f'y1 logits: {y[0][-1].data}, y2 logits: {y[1][-1].data}')
                             debuglogger.debug(
-                                f'y1: {argmax_y1.data[0]}, y2: {argmax_y2.data[0]}, new_target: {new_target[0]}')
+                                f'y1: {argmax_y1}, y2: {argmax_y2}, new_target: {new_target[0]}')
                             if FLAGS.cuda:
                                 new_target = new_target.cuda()
                             if change_agent == 1:
@@ -778,7 +778,7 @@ def get_similarity(dataset_path, in_domain_eval, agent1, agent2, a1_group, a2_gr
                                     na, argmax_y2 = torch.max(y[1][-1], 1)
                                     debuglogger.debug(f'y1 logits: {y[0][-1].data}, y2 logits: {y[1][-1].data}')
                                     debuglogger.debug(
-                                        f'y1: {argmax_y1.data[0]}, y2: {argmax_y2.data[0]}, '
+                                        f'y1: {argmax_y1}, y2: {argmax_y2}, '
                                         f'new_target: {new_target[0]}')
                                     if FLAGS.cuda:
                                         new_target = new_target.cuda()
@@ -868,7 +868,7 @@ def get_similarity(dataset_path, in_domain_eval, agent1, agent2, a1_group, a2_gr
                                     na, argmax_y2 = torch.max(y[1][-1], 1)
                                     debuglogger.debug(f'y1 logits: {y[0][-1].data}, y2 logits: {y[1][-1].data}')
                                     debuglogger.debug(
-                                        f'y1: {argmax_y1.data[0]}, y2: {argmax_y2.data[0]},'
+                                        f'y1: {argmax_y1}, y2: {argmax_y2},'
                                         f' new_target: {new_target[0]}')
                                     if FLAGS.cuda:
                                         new_target = new_target.cuda()
@@ -1875,7 +1875,6 @@ def eval_community(eval_list, models_dict, dev_accuracy_log, logger, flogger, ep
                             agent2.load_state_dict(agent1.state_dict())
                             if FLAGS.cuda:
                                 agent2.cuda()
-                            agent2 = torch.nn.DataParallel(agent2)
                         domain = f'In Domain Dev: Agent {i + 1} | Agent {j + 1}, ids [{id(agent1)}]/[{id(agent2)}]: '
                         _, _ = get_and_log_dev_performance(agent1, agent2, FLAGS.dataset_indomain_valid_path, True,
                                                            dev_accuracy_log, logger, flogger, domain, epoch, step,
@@ -1906,7 +1905,6 @@ def eval_community(eval_list, models_dict, dev_accuracy_log, logger, flogger, ep
                         agent2.load_state_dict(agent1.state_dict())
                         if FLAGS.cuda:
                             agent2.cuda()
-                        agent2 = torch.nn.DataParallel(agent2)
                     domain = f'In Domain Dev: Agent {i + 1} | Agent {j + 1}, ids [{id(agent1)}]/[{id(agent2)}]: '
                     _, _ = get_and_log_dev_performance(agent1, agent2, FLAGS.dataset_indomain_valid_path, True,
                                                        dev_accuracy_log, logger, flogger, domain, epoch, step, i_batch,
@@ -1915,8 +1913,8 @@ def eval_community(eval_list, models_dict, dev_accuracy_log, logger, flogger, ep
 
 def corrupt_message(corrupt_region, agent, binary_message):
     # Obtain mask
-    mask = Variable(build_mask(corrupt_region, agent.module.m_dim))
-    mask_broadcast = mask.view(1, agent.module.m_dim).expand_as(binary_message)
+    mask = Variable(build_mask(corrupt_region, agent.m_dim))
+    mask_broadcast = mask.view(1, agent.m_dim).expand_as(binary_message)
     # Subtract the mask to change values, but need to get absolute value
     # to set -1 values to 1 to essentially "flip" all the bits.
     binary_message = (binary_message - mask_broadcast).abs()
@@ -2037,7 +2035,7 @@ def exchange(a1, a2, exchange_args):
     r_2 = []
 
     # First message (default is 0)
-    m_binary = Variable(torch.FloatTensor(batch_size, agent1.module.m_dim).fill_(
+    m_binary = Variable(torch.FloatTensor(batch_size, agent1.m_dim).fill_(
         FLAGS.first_msg), volatile=not train)
     if FLAGS.cuda:
         m_binary = m_binary.cuda()
@@ -2049,8 +2047,8 @@ def exchange(a1, a2, exchange_args):
         agent1.eval()
         agent2.eval()
 
-    agent1.module.reset_state()
-    agent2.module.reset_state()
+    agent1.reset_state()
+    agent2.reset_state()
 
     # The message is ignored initially
     use_message = False
@@ -2279,15 +2277,19 @@ def get_outp(y, masks):
 
 def calculate_loss_binary(binary_features, binary_probs, rewards, baseline_rewards, entropy_penalty):
     """Calculates the reinforcement learning loss on the agent communication vectors"""
+    if FLAGS.cuda:
+        binary_features = binary_features.cuda()
+        binary_probs = binary_probs.cuda()
+        rewards = rewards.cuda()
+        baseline_rewards = baseline_rewards.cuda()
+
     log_p_z = Variable(binary_features.data) * torch.log(binary_probs + 1e-8) + \
         (1 - Variable(binary_features.data)) * \
         torch.log(1 - binary_probs + 1e-8)
     log_p_z = log_p_z.sum(1)
-    weight = Variable(rewards) - Variable(baseline_rewards.clone().detach().data)
+    weight = Variable(rewards) - Variable(baseline_rewards)
     if rewards.size(0) > 1:  # Ensures weights are not larger than 1
-        max = torch.maximum(torch.tensor(1), torch.std(weight))
-        if FLAGS.cuda:
-            max = max.cuda()
+        max = torch.maximum(torch.tensor(1.0), torch.std(weight))
         weight = weight / max
     loss = torch.mean(-1 * weight * log_p_z)
 
@@ -2298,6 +2300,7 @@ def calculate_loss_binary(binary_features, binary_probs, rewards, baseline_rewar
 
     if entropy_penalty is not None:
         loss = (loss + entropy_penalty * negentropy)
+
     return loss, negentropy
 
 
@@ -2457,24 +2460,23 @@ def run(rng):
 
         if FLAGS.cuda:
             agent.cuda()
-        agent = torch.nn.DataParallel(agent)
 
         flogger.Log("Agent {} id: {} Architecture: {}".format(_ + 1, id(agent), agent))
         total_params = sum([functools.reduce(lambda x, y: x * y, p.size(), 1.0)
-                            for p in agent.module.parameters()])
+                            for p in agent.parameters()])
         flogger.Log("Total Parameters: {}".format(total_params))
         agents.append(agent)
 
         # Optimizer
         if FLAGS.optim_type == "SGD":
             optimizer_agent = optim.SGD(
-                agent.module.parameters(), lr=FLAGS.learning_rate)
+                agent.parameters(), lr=FLAGS.learning_rate)
         elif FLAGS.optim_type == "Adam":
             optimizer_agent = optim.Adam(
-                agent.module.parameters(), lr=FLAGS.learning_rate)
+                agent.parameters(), lr=FLAGS.learning_rate)
         elif FLAGS.optim_type == "RMSprop":
             optimizer_agent = optim.RMSprop(
-                agent.module.parameters(), lr=FLAGS.learning_rate)
+                agent.parameters(), lr=FLAGS.learning_rate)
         else:
             raise NotImplementedError
 
@@ -2638,7 +2640,6 @@ def run(rng):
                         agent2.load_state_dict(agent1.state_dict())
                         if FLAGS.cuda:
                             agent2.cuda()
-                        agent2 = torch.nn.DataParallel(agent2)
                     if i == 0 and j == 0:
                         # Report in domain development accuracy and store examples TODO: Store examples currently
                         #  disabled. To fix store examples - image saving disabled because it clogs the memory and
@@ -2989,7 +2990,6 @@ def run(rng):
                 agent2.load_state_dict(agent1.state_dict())
                 if FLAGS.cuda:
                     agent2.cuda()
-                agent2 = torch.nn.DataParallel(agent2)
             debuglogger.debug(f'Agent 1: {agent_idxs[0]}, Agent 1: {agent_idxs[1]}')
 
             # Converted to Variable in get_classification_loss_and_stats
@@ -3238,24 +3238,24 @@ def run(rng):
 
                 # Agent1
                 log_loss_agent1 = "Epoch: {} Step: {} Batch: {} Loss Agent1: {}".format(
-                    epoch, step, i_batch, loss_agent1.data[0])
+                    epoch, step, i_batch, loss_agent1)
                 flogger.Log(log_loss_agent1)
                 # Agent 1 breakdown
                 log_loss_agent1_detail = "Epoch: {} Step: {} Batch: {} Loss Agent1: NLL: {} (BC:{} / AC:{}), RL: {}, " \
-                                         "Baseline: {} ".format(epoch, step, i_batch, nll_loss_1.data[0],
-                                                                nll_loss_1_nc.data[0], nll_loss_1_com.data[0],
-                                                                loss_binary_1.data[0], loss_baseline_1.data[0])
+                                         "Baseline: {} ".format(epoch, step, i_batch, nll_loss_1,
+                                                                nll_loss_1_nc, nll_loss_1_com,
+                                                                loss_binary_1, loss_baseline_1)
                 flogger.Log(log_loss_agent1_detail)
 
                 # Agent2
                 log_loss_agent2 = "Epoch: {} Step: {} Batch: {} Loss Agent2: {}".format(
-                    epoch, step, i_batch, loss_agent2.data[0])
+                    epoch, step, i_batch, loss_agent2)
                 flogger.Log(log_loss_agent2)
                 # Agent 2 breakdown
                 log_loss_agent2_detail = "Epoch: {} Step: {} Batch: {} Loss Agent2: NLL: {} (BC:{} / AC:{}), RL: {}, " \
-                                         "Baseline: {} ".format(epoch, step, i_batch, nll_loss_2.data[0],
-                                                                nll_loss_2_nc.data[0], nll_loss_2_com.data[0],
-                                                                loss_binary_2.data[0], loss_baseline_2.data[0])
+                                         "Baseline: {} ".format(epoch, step, i_batch, nll_loss_2,
+                                                                nll_loss_2_nc, nll_loss_2_com,
+                                                                loss_binary_2, loss_baseline_2)
                 flogger.Log(log_loss_agent2_detail)
 
                 # Log predictions
@@ -3269,7 +3269,7 @@ def run(rng):
                         log_ent_agent1_bin = "Entropy Agent1 Binary"
                         for i, ent in enumerate(ent_agent1_bin):
                             log_ent_agent1_bin += "\n{}. {}".format(
-                                i, -ent.data[0])
+                                i, -ent)
                         log_ent_agent1_bin += "\n"
                         flogger.Log(log_ent_agent1_bin)
 
@@ -3277,60 +3277,60 @@ def run(rng):
                         log_ent_agent2_bin = "Entropy Agent2 Binary"
                         for i, ent in enumerate(ent_agent2_bin):
                             log_ent_agent2_bin += "\n{}. {}".format(
-                                i, -ent.data[0])
+                                i, -ent)
                         log_ent_agent2_bin += "\n"
                         flogger.Log(log_ent_agent2_bin)
 
                 if len(ent_agent1_y) > 0:
                     log_ent_agent1_y = "Entropy Agent1 Predictions\n"
                     log_ent_agent1_y += "No comms entropy {}\n Comms entropy\n".format(
-                        -ent_1_nc.data[0])
+                        -ent_1_nc)
                     for i, ent in enumerate(ent_agent1_y):
-                        log_ent_agent1_y += "\n{}. {}".format(i, -ent.data[0])
+                        log_ent_agent1_y += "\n{}. {}".format(i, -ent)
                     log_ent_agent1_y += "\n"
                     flogger.Log(log_ent_agent1_y)
 
                 if len(ent_agent2_y) > 0:
                     log_ent_agent2_y = "Entropy Agent2 Predictions\n"
                     log_ent_agent2_y += "No comms entropy {}\n Comms entropy\n".format(
-                        -ent_2_nc.data[0])
+                        -ent_2_nc)
                     for i, ent in enumerate(ent_agent2_y):
-                        log_ent_agent2_y += "\n{}. {}".format(i, -ent.data[0])
+                        log_ent_agent2_y += "\n{}. {}".format(i, -ent)
                     log_ent_agent2_y += "\n"
                     flogger.Log(log_ent_agent2_y)
 
                 # Agent 1
                 logger.log(key="Loss Agent 1 (Total)",
-                           val=loss_agent1.data[0], step=step)
+                           val=loss_agent1, step=step)
                 logger.log(key="Loss Agent 1 (NLL)",
-                           val=nll_loss_1.data[0], step=step)
+                           val=nll_loss_1, step=step)
                 logger.log(key="Loss Agent 1 (NLL NC)",
-                           val=nll_loss_1_nc.data[0], step=step)
+                           val=nll_loss_1_nc, step=step)
                 logger.log(key="Loss Agent 1 (NLL COM)",
-                           val=nll_loss_1_com.data[0], step=step)
+                           val=nll_loss_1_com, step=step)
                 if FLAGS.use_binary:
                     logger.log(key="Loss Agent 1 (RL)",
-                               val=loss_binary_1.data[0], step=step)
+                               val=loss_binary_1, step=step)
                     logger.log(key="Loss Agent 1 (BAS)",
-                               val=loss_baseline_1.data[0], step=step)
+                               val=loss_baseline_1, step=step)
                     if not FLAGS.fixed_exchange:
                         # TODO
                         pass
 
                 # Agent 2
                 logger.log(key="Loss Agent 2 (Total)",
-                           val=loss_agent2.data[0], step=step)
+                           val=loss_agent2, step=step)
                 logger.log(key="Loss Agent 2 (NLL)",
-                           val=nll_loss_2.data[0], step=step)
+                           val=nll_loss_2, step=step)
                 logger.log(key="Loss Agent 2 (NLL NC)",
-                           val=nll_loss_2_nc.data[0], step=step)
+                           val=nll_loss_2_nc, step=step)
                 logger.log(key="Loss Agent 2 (NLL COM)",
-                           val=nll_loss_2_com.data[0], step=step)
+                           val=nll_loss_2_com, step=step)
                 if FLAGS.use_binary:
                     logger.log(key="Loss Agent 2 (RL)",
-                               val=loss_binary_2.data[0], step=step)
+                               val=loss_binary_2, step=step)
                     logger.log(key="Loss Agent 2 (BAS)",
-                               val=loss_baseline_2.data[0], step=step)
+                               val=loss_baseline_2, step=step)
                     if not FLAGS.fixed_exchange:
                         # TODO
                         pass
@@ -3437,7 +3437,6 @@ def run(rng):
                     agent2.load_state_dict(agent1.state_dict())
                     if FLAGS.cuda:
                         agent2.cuda()
-                    agent2 = torch.nn.DataParallel(agent2)
                     flogger.Log("Agent {} self communication: id {}".format(i + 1, id(agent)))
                     dev_accuracy_self_com[i], total_accuracy_com = get_and_log_dev_performance(
                         agent1, agent2, FLAGS.dataset_indomain_valid_path, True, dev_accuracy_self_com[i], logger,
@@ -3470,10 +3469,8 @@ def run(rng):
                             _agent2.load_state_dict(agent1.state_dict())
                             if FLAGS.cuda:
                                 _agent2.cuda()
-                            _agent2 = torch.nn.DataParallel(_agent2)
                         else:
                             _agent2 = models_dict["agent" + str(j + 1)]
-                            _agent2 = torch.nn.DataParallel(_agent2)
                         dev_accuracy_id_pairs[i], total_accuracy_com = get_and_log_dev_performance(
                             _agent1, _agent2, FLAGS.dataset_indomain_valid_path, True, dev_accuracy_id_pairs[i], logger,
                             flogger, f'Average Check: In Domain: Agents {i + 1},{j + 1}', epoch, step, i_batch,

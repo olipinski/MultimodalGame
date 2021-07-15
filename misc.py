@@ -340,7 +340,7 @@ def load_hdf5(hdf5_file, batch_size, random_seed, shuffle, truncate_final_batch=
 def embed(word_dict, emb):
     glove = {}
     print("Vocab Size: {}".format(len(word_dict.keys())))
-    with open(emb, "r") as f:
+    with open(emb, "r", encoding="utf8") as f:
         for line in f:
             word = line.strip()
             word = word.split(" ")
@@ -473,15 +473,6 @@ def count_distinct_messages(message_lists):
     master_list = list(set(master_list))
     distinct_msgs = len(master_list)
     return total_msgs, distinct_msgs
-
-
-def conv_output_shape(h_w, kernel_size=1, stride=1, pad=0, dilation=1):
-    from math import floor
-    if type(kernel_size) is not tuple:
-        kernel_size = (kernel_size, kernel_size)
-    h = floor(((h_w[0] + (2 * pad) - (dilation * (kernel_size[0] - 1)) - 1) / stride) + 1)
-    w = floor(((h_w[1] + (2 * pad) - (dilation * (kernel_size[1] - 1)) - 1) / stride) + 1)
-    return h, w
 
 def reset_parameters_util_x(model):
     for module in model.modules():

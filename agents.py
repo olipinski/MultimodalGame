@@ -8,7 +8,7 @@ import logging
 
 from torchinfo import summary
 
-from misc import conv_output_shape, reset_parameters_util_x, reset_parameters_util_h
+from misc import reset_parameters_util_x, reset_parameters_util_h
 
 FORMAT = '[%(asctime)s %(levelname)s] %(message)s'
 logging.basicConfig(format=FORMAT)
@@ -38,9 +38,7 @@ class CapsPrimaryLayer(nn.Module):
         outputs = self.conv_out(x)
         map_dim = outputs.size(-1)
         outputs = outputs.view(batch_size, self.capsule_dim, self.num_cap_map, map_dim, map_dim)
-        # [bs, 8 (or 10), 32, 6, 6]
         outputs = outputs.view(batch_size, self.capsule_dim, self.num_cap_map, -1).transpose(1, 2).transpose(2, 3)
-        # [bs, 32, 36, 8]
         outputs = squash(outputs)
         return outputs
 
@@ -58,9 +56,9 @@ class CapsShapeLayer(nn.Module):
         self.W = nn.Parameter(0.01 * torch.randn(1, num_digit_cap, num_prim_map, 1, out_cap_dim, in_cap_dim))
 
     def forward(self, x):
-        batch_size = x.size(0)  # [bs, 32, 36, 8]
-        u = x[:, None, :, :, :, None]  # [bs, 1, 32, 36, 8, 1]
-        u_hat = torch.matmul(self.W, u).squeeze(-1)  # [bs, 10, 32, 36, 16]
+        batch_size = x.size(0)
+        u = x[:, None, :, :, :, None]
+        u_hat = torch.matmul(self.W, u).squeeze(-1)
 
         # detach u_hat during routing iterations to prevent gradients from flowing
         temp_u_hat = u_hat.detach()
@@ -68,14 +66,12 @@ class CapsShapeLayer(nn.Module):
         b = torch.zeros(batch_size, self.num_digit_cap, u_hat.size(2), u_hat.size(3), 1)
         if self.use_cuda:
             b = b.cuda()
-        # [bs, 10, 32, 36, 1]
         for i in range(self.num_iterations - 1):
             c = F.softmax(b, dim=1)
-            s = (c * temp_u_hat).sum(dim=2).sum(dim=2)  # [bs, 10, 16]
+            s = (c * temp_u_hat).sum(dim=2).sum(dim=2)
             v = squash(s)
-            # [bs, 10, 1152, 16] . [batch_size, 10, 16, 1]
             uv = torch.matmul(temp_u_hat.view(batch_size, self.num_digit_cap, -1, self.out_cap_dim),
-                              v.unsqueeze(-1))  # [batch_size, 10, 1152, 1]
+                              v.unsqueeze(-1))
             b += uv.view(b.shape)
 
         c = F.softmax(b, dim=3)
@@ -111,7 +107,7 @@ class ImageProcessor(nn.Module):
                                              num_iterations=num_iterations,
                                              use_cuda=cuda)
 
-        self.im_transform = nn.Linear(img_c * shape_cap_dim, hid_dim)
+        self.im_transform = nn.Linear(num_classes * shape_cap_dim, hid_dim)
 
     def forward(self, imgs):
         x = F.relu(self.conv1(imgs), inplace=True)
