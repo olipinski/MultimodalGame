@@ -86,7 +86,7 @@ class CapsShapeLayer(nn.Module):
 
 class ImageProcessor(nn.Module):
     def __init__(self, img_c=3, f_conv1=256, k_conv1=9, s_conv1=1, f_prim=256, primary_cap_dim=8,
-                 k_prim=9, s_prim=2, img_h=128, shape_cap_dim=16, num_iterations=3, cuda=False, hid_dim=256):
+                 k_prim=9, s_prim=2, img_h=128, shape_cap_dim=16, num_iterations=3, cuda=False, hid_dim=256, num_classes=24):
         super(ImageProcessor, self).__init__()
 
         # convolution layer
@@ -289,7 +289,7 @@ class Agent(nn.Module):
         self.use_MLP = use_mlp
         self.use_cuda = cuda
         self.image_processor = ImageProcessor(img_h=im_dim, cuda=cuda, hid_dim=h_dim, primary_cap_dim=pcd,
-                                              shape_cap_dim=scd)
+                                              shape_cap_dim=scd, num_classes=num_classes)
         self.text_processor = TextProcessor(desc_dim=desc_dim, hid_dim=h_dim)
         self.message_processor = MessageProcessor(m_dim=m_dim, hid_dim=h_dim, cuda=cuda)
         self.message_generator = MessageGenerator(m_dim=m_dim, hid_dim=h_dim, use_binary=use_binary)
@@ -496,7 +496,7 @@ if __name__ == "__main__":
                   use_MLP,
                   cuda,
                   pcd,
-                  scd
+                  scd,
                   )
 
     x = _Variable(torch.ones(batch_size, 3, im_dim, im_dim))
