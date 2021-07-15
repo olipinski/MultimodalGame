@@ -82,7 +82,8 @@ class CapsShapeLayer(nn.Module):
 
 class ImageProcessor(nn.Module):
     def __init__(self, img_c=3, f_conv1=256, k_conv1=9, s_conv1=1, f_prim=256, primary_cap_dim=8,
-                 k_prim=9, s_prim=2, img_h=128, shape_cap_dim=16, num_iterations=3, cuda=False, hid_dim=256, num_classes=24):
+                 k_prim=9, s_prim=2, img_h=128, shape_cap_dim=16, num_iterations=3, cuda=False,
+                 hid_dim=256, num_classes=24):
         super(ImageProcessor, self).__init__()
 
         # convolution layer

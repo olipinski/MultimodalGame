@@ -23,7 +23,8 @@ for i, c in enumerate(COLORS):
     COLORS_DICT[c] = i
 
 
-def load_classifier_dataset(data_path, batch_size, random_seed, shuffle, cuda, num_examples=1, binary=1, truncate_final_batch=False):
+def load_classifier_dataset(data_path, batch_size, random_seed, shuffle, cuda, num_examples=1,
+                            binary=1, truncate_final_batch=False):
     data = pickle.load(open(data_path, 'rb'))
     x = []
     y = []
@@ -116,7 +117,7 @@ def load_classifier_dataset(data_path, batch_size, random_seed, shuffle, cuda, n
 
 
 class Classifier(nn.Module):
-    '''Processes sentence representations to the correct hidden dimension'''
+    """Processes sentence representations to the correct hidden dimension"""
 
     def __init__(self, input_dim):
         super(Classifier, self).__init__()
@@ -160,13 +161,16 @@ def eval_dev(dataloader, net, epoch, i, moreinfo):
         total += out.data.size(0)
         total_correct += correct.data[0]
         # print(f'total: {total}, correct: {total_correct}, correct: {correct}')
-    print(f'Epoch: {epoch}, Batch: {i}, Total: {total}, Correct: {total_correct}, Accuracy: {total_correct/total}, Mean pred: {sum(mean_out) / len(mean_out)}')
+    print(f'Epoch: {epoch}, Batch: {i}, Total: {total}, Correct: {total_correct},'
+          f' Accuracy: {total_correct/total}, Mean pred: {sum(mean_out) / len(mean_out)}')
 
 
 if __name__ == "__main__":
     # params
     parser = argparse.ArgumentParser(description='Analyze messages')
-    parser.add_argument('--datapath', type=str, default="./logs/experiments_030718/big_valid_msg_eval_only_A_1_2_message_stats.pkl", help='Path to messages')
+    parser.add_argument('--datapath', type=str,
+                        default="./logs/experiments_030718/big_valid_msg_eval_only_A_1_2_message_stats.pkl",
+                        help='Path to messages')
     parser.add_argument('--inputdim', type=int, default=8, help='input dim')
     parser.add_argument('--lr', type=float, default=0.01, help='learning rate')
     parser.add_argument('--cuda', type=int, default=0, help='whether to use cuda')
@@ -221,7 +225,8 @@ if __name__ == "__main__":
     epoch = 0
     while epoch < max_epoch:
         # Iterate through batches
-        dataloader = load_classifier_dataset(data_path, batch_size, random_seed, shuffle, cuda, num_examples=num_examples, binary=binary)
+        dataloader = load_classifier_dataset(data_path, batch_size, random_seed, shuffle, cuda,
+                                             num_examples=num_examples, binary=binary)
         for i_batch, batch in enumerate(dataloader):
             net.train()
             optimizer.zero_grad()
@@ -236,7 +241,8 @@ if __name__ == "__main__":
             optimizer.step()
             step += 1
             # break
-        evalloader = load_classifier_dataset(data_path, batch_size, random_seed, 0, cuda, num_examples=num_examples, binary=binary)
+        evalloader = load_classifier_dataset(data_path, batch_size, random_seed, 0,
+                                             cuda, num_examples=num_examples, binary=binary)
         eval_dev(evalloader, net, epoch, i_batch, args.moreinfo)
         epoch += 1
         # break

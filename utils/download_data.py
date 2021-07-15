@@ -257,14 +257,20 @@ def cmd_download():
 
 
 if __name__ == '__main__':
-    gflags.DEFINE_string("synsets", "n01498041,n01514859,n01518878,n01531178,n01558993,n01580077" \
-        ",n01582220,n01592084,n01616318,n01641577,n01667778,n01687978,n01704323,n01768244,n01770393" \
-        ",n01774750,n01784675,n01806143,n01806567,n01807496,n01818515,n01820546,n01833805,n01843065" \
-        ",n01847000,n01855672,n01910747,n01944390,n01945685,n01882714", "Comma-delimited list of sysnet ids to use.")
-    gflags.DEFINE_string("classes", "stingray,hen,ostrich,goldfinch,robin,jay,magpie" \
-        ",chickadee,vulture,bullfrog,terrapin,agama,triceratops,trilobite,scorpion,tarantula" \
-        ",centipede,peacock,quail,partridge,macaw,lorikeet,hummingbird,jacamar,drake,goose" \
-        ",jellyfish,snail,slug,koala", "Comma-delimited list of classes to use. Should match sysnet ids.")
+    gflags.DEFINE_string("synsets", "n01498041,n01514859,n01518878,n01531178,n01558993,n01580077,"
+                                    "n01582220,n01592084,n01616318,n01641577,n01667778,n01687978,"
+                                    "n01704323,n01768244,n01770393," 
+                                    "n01774750,n01784675,n01806143,n01806567,n01807496,n01818515,"
+                                    "n01820546,n01833805,n01843065," 
+                                    "n01847000,n01855672,n01910747,n01944390,n01945685,n01882714",
+                         "Comma-delimited list of sysnet ids to use.")
+    gflags.DEFINE_string("classes", "stingray,hen,ostrich,goldfinch,robin,jay,magpie,"
+                                    "chickadee,vulture,bullfrog,terrapin,agama,triceratops,"
+                                    "trilobite,scorpion,tarantula,"
+                                    "centipede,peacock,quail,partridge,macaw,"
+                                    "lorikeet,hummingbird,jacamar,drake,goose,"
+                                    "jellyfish,snail,slug,koala",
+                         "Comma-delimited list of classes to use. Should match sysnet ids.")
     gflags.DEFINE_integer("seed", 11, "Seed for shuffling urls.")
 
     # urls args

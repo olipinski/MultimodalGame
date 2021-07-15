@@ -10,7 +10,8 @@ import sys
 
 COLOURS = ('red', 'green', 'blue', 'yellow', 'magenta', 'cyan')
 SHAPES = ('square', 'rectangle', 'triangle', 'pentagon', 'cross', 'circle')
-OUTOFDOMAIN = [('square', 'red'), ('triangle', 'green'), ('circle', 'blue'), ('rectangle', 'yellow'), ('cross', 'magenta'), ('ellipse', 'cyan')]
+OUTOFDOMAIN = [('square', 'red'), ('triangle', 'green'), ('circle', 'blue'), ('rectangle', 'yellow'),
+               ('cross', 'magenta'), ('ellipse', 'cyan')]
 
 
 def convert_tensor_to_string(message):
@@ -218,7 +219,9 @@ def count_blanks(data, blank_m1, blank_m2):
                     counts['00']['correct'] += 1
                 else:
                     counts['00']['incorrect'] += 1
-    total = counts['11']['correct'] + counts['11']['incorrect'] + counts['00']['correct'] + counts['00']['incorrect'] + counts['01']['correct'] + counts['01']['incorrect'] + counts['10']['correct'] + counts['10']['incorrect']
+    total = counts['11']['correct'] + counts['11']['incorrect'] + counts['00']['correct'] + \
+        counts['00']['incorrect'] + counts['01']['correct'] + counts['01']['incorrect'] + \
+        counts['10']['correct'] + counts['10']['incorrect']
     counts['11']['p'] = (counts['11']['correct'] + counts['11']['incorrect']) / total
     counts['00']['p'] = (counts['00']['correct'] + counts['00']['incorrect']) / total
     counts['10']['p'] = (counts['10']['correct'] + counts['10']['incorrect']) / total
@@ -234,7 +237,6 @@ def calc_entropy_ratio(data, agents, answer_type):
     convert = torch.log(torch.zeros(1).fill_(2))
     nans = 0
     for _, d in enumerate(data):
-        include = None
         if answer_type == "both":
             include = True
         elif answer_type == "correct":
@@ -246,7 +248,8 @@ def calc_entropy_ratio(data, agents, answer_type):
                 for msg, m_prob in zip(d["msg_1"], d["probs_1"]):
                     messages.append(msg.numpy())
                     message_probs.append(m_prob.numpy())
-                    H = - torch.mul(m_prob, torch.log(m_prob) / convert).sum() - torch.mul(1 - m_prob, torch.log(1 - m_prob) / convert).sum()
+                    H = - torch.mul(m_prob, torch.log(m_prob) / convert).sum() - \
+                        torch.mul(1 - m_prob, torch.log(1 - m_prob) / convert).sum()
                     if np.isnan(H):
                         # print("ARRRGHHH NAN!")
                         nans += 1
@@ -255,7 +258,8 @@ def calc_entropy_ratio(data, agents, answer_type):
                 for msg, m_prob in zip(d["msg_2"], d["probs_2"]):
                     messages.append(msg.numpy())
                     message_probs.append(m_prob.numpy())
-                    H = - torch.mul(m_prob, torch.log(m_prob) / convert).sum() - torch.mul(1 - m_prob, torch.log(1 - m_prob) / convert).sum()
+                    H = - torch.mul(m_prob, torch.log(m_prob) / convert).sum() - \
+                        torch.mul(1 - m_prob, torch.log(1 - m_prob) / convert).sum()
                     if np.isnan(H):
                         # print("ARRRGHHH NAN!")
                         nans += 1
@@ -265,7 +269,8 @@ def calc_entropy_ratio(data, agents, answer_type):
                 for msg, m_prob in zip(d["msg_1"], d["probs_1"]):
                     messages.append(msg.numpy())
                     message_probs.append(m_prob.numpy())
-                    H = - torch.mul(m_prob, torch.log(m_prob) / convert).sum() - torch.mul(1 - m_prob, torch.log(1 - m_prob) / convert).sum()
+                    H = - torch.mul(m_prob, torch.log(m_prob) / convert).sum() -\
+                        torch.mul(1 - m_prob, torch.log(1 - m_prob) / convert).sum()
                     if np.isnan(H):
                         # print("ARRRGHHH NAN!")
                         nans += 1
@@ -275,7 +280,8 @@ def calc_entropy_ratio(data, agents, answer_type):
                 for msg, m_prob in zip(d["msg_2"], d["probs_2"]):
                     messages.append(msg.numpy())
                     message_probs.append(m_prob.numpy())
-                    H = - torch.mul(m_prob, torch.log(m_prob) / convert).sum() - torch.mul(1 - m_prob, torch.log(1 - m_prob) / convert).sum()
+                    H = - torch.mul(m_prob, torch.log(m_prob) / convert).sum() -\
+                        torch.mul(1 - m_prob, torch.log(1 - m_prob) / convert).sum()
                     if np.isnan(H):
                         # print("ARRRGHHH NAN!")
                         nans += 1
@@ -289,8 +295,10 @@ def calc_entropy_ratio(data, agents, answer_type):
     mean_m = torch.from_numpy(np.mean(messages, axis=0)).float()
     mean_m_prob = torch.from_numpy(np.mean(message_probs, axis=0)).float()
     # Convert to base 2
-    ent_mean_m = - torch.mul(mean_m, torch.log(mean_m) / convert).sum() - torch.mul(1 - mean_m, torch.log(1 - mean_m) / convert).sum()
-    ent_mean_m_prob = - torch.mul(mean_m_prob, torch.log(mean_m_prob) / convert).sum() - torch.mul(1 - mean_m_prob, torch.log(1 - mean_m_prob) / convert).sum()
+    ent_mean_m = - torch.mul(mean_m, torch.log(mean_m) / convert).sum() -\
+        torch.mul(1 - mean_m, torch.log(1 - mean_m) / convert).sum()
+    ent_mean_m_prob = - torch.mul(mean_m_prob, torch.log(mean_m_prob) / convert).sum() -\
+        torch.mul(1 - mean_m_prob, torch.log(1 - mean_m_prob) / convert).sum()
     # print(f'E(m|x) = {mean_m}')
     print(f'E[H(m|x)] = {mean_e}, H[E(m|x)] = {ent_mean_m}/{ent_mean_m_prob}')
     print(f'Ratio: {mean_e / ent_mean_m}/{mean_e / ent_mean_m_prob}')
@@ -408,7 +416,8 @@ def study_shape_color(data, shape, color, blanks=[]):
     del m_dict[shape]['2']['all']
     # print(f"Number {shape}: A1: {m_dict[shape]['1']['count']}, A2: {m_dict[shape]['2']['count']}")
 
-    # print(f"Number {shape}_{color}: A1: {m_dict[shape + '_' + color]['1']['all'].shape}, A2: {m_dict[shape + '_' + color]['2']['all'].shape}")
+    # print(f"Number {shape}_{color}: A1: {m_dict[shape + '_' + color]['1']['all'].shape},"
+    #      f" A2: {m_dict[shape + '_' + color]['2']['all'].shape}")
     m_dict[shape + '_' + color]['1']['mean'] = np.mean(m_dict[shape + '_' + color]['1']['all'], axis=0)
     m_dict[shape + '_' + color]['1']['std'] = np.std(m_dict[shape + '_' + color]['1']['all'], axis=0)
     m_dict[shape + '_' + color]['1']['count'] = m_dict[shape + '_' + color]['1']['all'].shape[0]
@@ -417,7 +426,8 @@ def study_shape_color(data, shape, color, blanks=[]):
     m_dict[shape + '_' + color]['2']['std'] = np.std(m_dict[shape + '_' + color]['2']['all'], axis=0)
     m_dict[shape + '_' + color]['2']['count'] = m_dict[shape + '_' + color]['2']['all'].shape[0]
     del m_dict[shape + '_' + color]['2']['all']
-    # print(f"Number {shape}_{color}: A1: {m_dict[shape + '_' + color]['1']['count']}, A2: {m_dict[shape + '_' + color]['2']['count']}")
+    # print(f"Number {shape}_{color}: A1: {m_dict[shape + '_' + color]['1']['count']},"
+    #      f" A2: {m_dict[shape + '_' + color]['2']['count']}")
     return m_dict
 
 
@@ -564,7 +574,8 @@ def analyze_messages(data, path):
         blank_m2 = list_dict_2[i][0]
         p_blanks_m1 = list_dict[i][1]['total'] / m_dict['total']
         p_blanks_m2 = list_dict_2[i][1]['total'] / m_dict_2['total']
-        print(f'Blank_m1: {blank_m1}, blanks_m2: {blank_m2}, probs: {p_blanks_m1}/{p_blanks_m2}, joint prob {p_blanks_m1 * p_blanks_m2}')
+        print(f'Blank_m1: {blank_m1}, blanks_m2: {blank_m2}, probs: {p_blanks_m1}/{p_blanks_m2},'
+              f' joint prob {p_blanks_m1 * p_blanks_m2}')
         _ = count_blanks(data, blank_m1, blank_m2)
     print('================================== Entropies ==================================')
     print(f'Overall entropy ratio')
@@ -592,24 +603,22 @@ def analyze_messages(data, path):
     shape = "triangle"
     color = "blue"
     print(f'shape: {shape}, color: {color}')
-    sc = shape + '_' + color
     result = study_shape_color(data, shape, color)
     pprint.pprint(result)
     shape = "square"
     color = "blue"
     print(f'shape: {shape}, color: {color}')
-    sc = shape + '_' + color
     result = study_shape_color(data, shape, color)
     pprint.pprint(result)
     shape = "square"
     color = "yellow"
     print(f'shape: {shape}, color: {color}')
-    sc = shape + '_' + color
     result = study_shape_color(data, shape, color)
     pprint.pprint(result)
     _, _, _, _ = create_shape_color_combos(data)
     print('================================== Shape color studies, no blank msg ==================================')
-    codes_c1, codes_c2, codes_s1, codes_s2 = create_shape_color_combos(data, blanks=[list_dict[0][0], list_dict_2[0][0]])
+    codes_c1, codes_c2, codes_s1, codes_s2 = create_shape_color_combos(data,
+                                                                       blanks=[list_dict[0][0], list_dict_2[0][0]])
     dict_c1 = convert_codes_to_dict(codes_c1, codes_s1)
     dict_c2 = convert_codes_to_dict(codes_c2, codes_s2)
     print("Agent 1 dictionary")
@@ -643,7 +652,8 @@ def check_distribution(data):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Analyze messages')
-    parser.add_argument('--path', type=str, default="./logs/experiments_030718/big_valid_msg_eval_only_A_1_2_message_stats.pkl",
+    parser.add_argument('--path', type=str,
+                        default="./logs/experiments_030718/big_valid_msg_eval_only_A_1_2_message_stats.pkl",
                         help='Path to messages')
     args = parser.parse_args()
     data = pickle.load(open(args.path, 'rb'))

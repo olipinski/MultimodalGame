@@ -1,6 +1,7 @@
 """
 Utility functions for setting up agent communities. There are two main roles:
-    1. Building the agent community connectivity graph and transforming this into a probability distribution for sampling pairs of agents to train
+    1. Building the agent community connectivity graph and transforming this into a probability distribution
+    for sampling pairs of agents to train
     2. Generating the set of evaluation pairs to periodically track different types of agent performance
 """
 
@@ -23,10 +24,11 @@ def sample_agents(train_probs, agent_idx_list):
     and returns a pair of agent indexes """
     idx = np.random.choice(list(range(len(agent_idx_list))), p=train_probs)
     (agent1, agent2) = agent_idx_list[idx]
-    return (agent1, agent2)
+    return agent1, agent2
 
 
-def build_train_matrix(pools_num, community_type, intra_pool_connect_p, inter_pool_connect_p, adjust_train_ratio, intra_inter_ratio=1.0):
+def build_train_matrix(pools_num, community_type, intra_pool_connect_p, inter_pool_connect_p,
+                       adjust_train_ratio, intra_inter_ratio=1.0):
     """Builds a connectivity matrix over multiple pools of agents. Returns a probability distribution over all
     possible agent connections in the population (across multiple pools) and a mapping from ints to agent pairs
 
@@ -49,12 +51,12 @@ def build_train_matrix(pools_num, community_type, intra_pool_connect_p, inter_po
     agent_idx_list = []
     intra_train_matrix = np.zeros((total_agents, total_agents))
     inter_train_matrix = np.zeros((total_agents, total_agents))
-    train_matrix = np.zeros((total_agents, total_agents))
     if community_type == "hub_spoke":
-        debuglogger.warn(f'Hub and spoke model not implemented yet, select "dense" or "chain"')
+        debuglogger.warning(f'Hub and spoke model not implemented yet, select "dense" or "chain"')
         sys.exit()
     elif community_type == "dense" or community_type == "chain":
-        debuglogger.info(f'Building a {community_type} community with {total_agents} agents organized into {len(pools_num)} groups with {pools_num} agents')
+        debuglogger.info(f'Building a {community_type} community with {total_agents} agents '
+                         f'organized into {len(pools_num)} groups with {pools_num} agents')
         # fill intra_pool connectivity
         offset = 0
         for p, prob in zip(pools_num, intra_pool_connect_p):
@@ -72,15 +74,14 @@ def build_train_matrix(pools_num, community_type, intra_pool_connect_p, inter_po
         debuglogger.info(f'Total intrapool: {total_intrapool}')
         # fill inter_pool connectivity
         if community_type == "chain":
-            prev_start = 0
             cur_start = 0
             cur_end = 0
-            next_end = pools_num[0]
             for i in range(len(pools_num)):
                 cur_end += pools_num[i]  # current pool size
                 prev_start = cur_start - pools_num[i - 1] if i > 0 else 0
                 next_end = cur_end + pools_num[i + 1] if i < len(pools_num) - 1 else cur_end
-                debuglogger.debug(f'prev start: {prev_start}, cur_start: {cur_start}, cur_end: {cur_end}, next_end: {next_end}')
+                debuglogger.debug(f'prev start: {prev_start}, cur_start: {cur_start}, '
+                                  f'cur_end: {cur_end}, next_end: {next_end}')
                 for o in range(cur_start, cur_end):
                     for j in range(prev_start, cur_start):
                         # print(f'i: {o}, j: {j}')
@@ -138,7 +139,7 @@ def build_train_matrix(pools_num, community_type, intra_pool_connect_p, inter_po
     else:
         debuglogger.warning(f'Invalid community type, please select "dense" or "chain"')
         sys.exit()
-    return (train_vec_prob, agent_idx_list)
+    return train_vec_prob, agent_idx_list
 
 
 def build_eval_list(pools_num, community_type, train_vec_prob):
@@ -152,7 +153,6 @@ def build_eval_list(pools_num, community_type, train_vec_prob):
         6. cross pool communication, different agents, never trained together
     """
     total_agents = sum(pools_num)
-    eval_connections = np.zeros((total_agents, total_agents))
     train_matrix = np.reshape(train_vec_prob, (total_agents, total_agents))
     total_combinations = 0
     c_1 = []  # self communication, agent connected to multiple pools
@@ -238,9 +238,12 @@ def build_eval_list(pools_num, community_type, train_vec_prob):
         c_6_chain.append(c_p_6_chain)
         prev_p = curr_p
     debuglogger.info(f'Total combinations: {total_combinations}')
-    debuglogger.info(f'Self communication: multiple pools: {sum([len(x) for x in c_1])}, one pool: {sum([len(x) for x in c_2])}')
-    debuglogger.info(f'Within pool comms: trained together: {sum([len(x) for x in c_3])}, not trained together: {sum([len(x) for x in c_4])}')
-    debuglogger.info(f'Cross pool comms: trained together: {sum([len(x) for x in c_5])}, not trained together: {sum([len(x) for x in c_6])}')
+    debuglogger.info(f'Self communication: multiple pools: {sum([len(x) for x in c_1])}, '
+                     f'one pool: {sum([len(x) for x in c_2])}')
+    debuglogger.info(f'Within pool comms: trained together: {sum([len(x) for x in c_3])}, '
+                     f'not trained together: {sum([len(x) for x in c_4])}')
+    debuglogger.info(f'Cross pool comms: trained together: {sum([len(x) for x in c_5])}, '
+                     f'not trained together: {sum([len(x) for x in c_6])}')
     choices = [c_1, c_2, c_3, c_4, c_5, c_6]
     debuglogger.debug(f'c_5_chain: {c_5_chain}')
     debuglogger.debug(f'c_6_chain: {c_6_chain}')
@@ -289,15 +292,18 @@ def build_eval_list(pools_num, community_type, train_vec_prob):
 
 
 def get_msg_pairs(community_structure):
-    agent_pairs = []
     if community_structure == "55555":
-        agent_pairs = [(0, 1), (0, 5), (0, 10), (0, 15), (0, 20), (5, 6), (5, 10), (5, 15), (5, 20), (10, 11), (10, 15), (10, 20), (15, 16), (15, 20), (20, 21)]
+        agent_pairs = [(0, 1), (0, 5), (0, 10), (0, 15), (0, 20), (5, 6), (5, 10), (5, 15), (5, 20),
+                       (10, 11), (10, 15), (10, 20), (15, 16), (15, 20), (20, 21)]
     elif community_structure == "551055":
-        agent_pairs = [(0, 1), (0, 5), (0, 10), (0, 20), (0, 25), (5, 6), (5, 10), (5, 20), (5, 25), (10, 11), (10, 20), (20, 25), (20, 21), (20, 25), (25, 26)]
+        agent_pairs = [(0, 1), (0, 5), (0, 10), (0, 20), (0, 25), (5, 6), (5, 10), (5, 20), (5, 25),
+                       (10, 11), (10, 20), (20, 25), (20, 21), (20, 25), (25, 26)]
     elif community_structure == "331033":
-        agent_pairs = [(0, 1), (0, 3), (0, 6), (0, 16), (0, 19), (3, 4), (3, 6), (3, 16), (3, 19), (6, 7), (6, 16), (6, 19), (16, 17), (16, 19), (19, 20)]
+        agent_pairs = [(0, 1), (0, 3), (0, 6), (0, 16), (0, 19), (3, 4), (3, 6), (3, 16), (3, 19),
+                       (6, 7), (6, 16), (6, 19), (16, 17), (16, 19), (19, 20)]
     elif community_structure == "333710":
-        agent_pairs = [(0, 1), (0, 3), (0, 6), (0, 9), (0, 16), (3, 4), (3, 6), (3, 9), (3, 16), (6, 7), (6, 9), (6, 16), (9, 10), (9, 16), (16, 17)]
+        agent_pairs = [(0, 1), (0, 3), (0, 6), (0, 9), (0, 16), (3, 4), (3, 6), (3, 9), (3, 16),
+                       (6, 7), (6, 9), (6, 16), (9, 10), (9, 16), (16, 17)]
     else:
         print("ERROR: no agent pairs specified for " + community_structure)
         sys.exit()
@@ -310,7 +316,8 @@ if __name__ == "__main__":
     intra_pool_connect_p = [1.0, 1.0, 1.0]
     inter_pool_connect_p = 0.2
     intra_inter_ratio = 1.0
-    (train_vec_prob, agent_idx_list) = build_train_matrix(pools_num, community_type, intra_pool_connect_p, inter_pool_connect_p, intra_inter_ratio)
+    (train_vec_prob, agent_idx_list) = build_train_matrix(pools_num, community_type,
+                                                          intra_pool_connect_p, inter_pool_connect_p, intra_inter_ratio)
     eval_agent_idxs = build_eval_list(pools_num, community_type, train_vec_prob)
     for i in range(20):
         (agent1, agent2) = sample_agents(train_vec_prob, agent_idx_list)

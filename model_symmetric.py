@@ -2375,7 +2375,7 @@ def get_classification_loss_and_stats(predictions, targets):
     nll_loss = nn.NLLLoss()(dist, Variable(targets))
     logs = loglikelihood(Variable(dist.data),
                          Variable(targets.view(-1, 1)))
-    return (dist, maxdist, argmax, ent, nll_loss, logs)
+    return dist, maxdist, argmax, ent, nll_loss, logs
 
 
 def run(rng):

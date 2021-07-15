@@ -376,7 +376,8 @@ def cbow(descr, word_dict):
 
 # Function computing CBOW for each set of descriptions
 def cbow_general(texts, word2id, id2word):
-    """Takes a batch of n texts per example. Each example is a list of ints corresponding to a textual description of the image
+    """Takes a batch of n texts per example. Each example is a list of
+    ints corresponding to a textual description of the image
     Returns: two tensors.
                 1. cbow vector for each example
                     size: batch_size x desc_per_elem x embedding_dim
@@ -440,8 +441,8 @@ def calculate_entropy(p):
 
 def _create_master_list(lists):
     master_list = []
-    for l in lists:
-        for k in l:
+    for lst in lists:
+        for k in lst:
             master_list.extend(k)
     return master_list
 
@@ -473,6 +474,7 @@ def count_distinct_messages(message_lists):
     master_list = list(set(master_list))
     distinct_msgs = len(master_list)
     return total_msgs, distinct_msgs
+
 
 def reset_parameters_util_x(model):
     for module in model.modules():

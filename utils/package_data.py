@@ -33,7 +33,6 @@ fc            - (4L, 1000L)
 
 """
 
-
 import sys
 import os
 
@@ -75,6 +74,7 @@ def basic_block(layer, relu=False):
             out = layer.relu(out)
 
         return out
+
     return forward
 
 
@@ -114,7 +114,7 @@ class FeatureModel(nn.Module):
             raise NotImplementedError()
 
         layers += [
-            #(model.avgpool, 'avgpool'),
+            # (model.avgpool, 'avgpool'),
             # avgpool fix to get to original specifid dimensions - perhaps ResNet spec changed?
             (AvgPool2d(kernel_size=8, stride=1, padding=0, ceil_mode=False, count_include_pad=True), 'avgpool_4D'),
             (lambda x: x.view(x.size(0), -1), 'avgpool_512'),
@@ -122,10 +122,10 @@ class FeatureModel(nn.Module):
         ]
 
         for module, name in layers:
-            #print(f'name: {name}\n module: {module}')
-            #print(f'x shape before: {x.size()}')
+            # print(f'name: {name}\n module: {module}')
+            # print(f'x shape before: {x.size()}')
             x = module(x)
-            #print(f'x shape after: {x.size()}')
+            # print(f'x shape after: {x.size()}')
             # print(" N", x.data.numel())
             # print("<0", (x.data < 0.).sum())
             # print("=0", (x.data == 0.).sum())
@@ -149,7 +149,7 @@ def label_mapping(desc_path):
 
 def custom_dtype(outp, request):
     schema = [('Location', np.str_, 50),
-             ('Target', 'i')]
+              ('Target', 'i')]
     for o, r in zip(outp, request):
         size = tuple([1] + list(o.shape)[1:])
         schema.append((r, np.float32, size))
@@ -176,12 +176,12 @@ def run():
     # Load dataset and transform
     dataset = dset.ImageFolder(root=FLAGS.load_imgs,
                                transform=transforms.Compose([
-                               transforms.Resize(227),
-                               transforms.CenterCrop(227),
-                               transforms.ToTensor(),
-                               transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+                                   transforms.Resize(227),
+                                   transforms.CenterCrop(227),
+                                   transforms.ToTensor(),
+                                   transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
                                ])
-                              )
+                               )
 
     # Read images
     dataloader = torch.utils.data.DataLoader(dataset,
@@ -232,9 +232,9 @@ def run():
         for j, o in enumerate(zip(*multi_split(np_outp, batch_size))):
             filename = dataset.imgs[offset + j][0]
             parts = filename.split(os.sep)
-            label = parts[-2] # the label as a string
-            loc = parts[-1] # something like '1-100-251756690_e68ac649e3_z.jpg'
-            label_id = label_to_id[label] # use the label id specified by the desc file
+            label = parts[-2]   # the label as a string
+            loc = parts[-1]  # something like '1-100-251756690_e68ac649e3_z.jpg'
+            label_id = label_to_id[label]   # use the label id specified by the desc file
 
             # Save Image
             row = tuple([loc, label_id] + list(o))
@@ -248,10 +248,10 @@ def run():
     hdf5_f = h5py.File(FLAGS.save_hdf5, 'w')
     hdf5_f.create_dataset("Target", data=np.array(targets))
     # Location format not saveable to hdf5
-    #dt = np.dtype(str)
-    #locations = np.array(locations).astype(dt)
-    #hdf5_f.create_dataset("Location", (len(locations),), dtype=str)
-    #hdf5_f.create_dataset("Location", data=locations))
+    # dt = np.dtype(str)
+    # locations = np.array(locations).astype(dt)
+    # hdf5_f.create_dataset("Location", (len(locations),), dtype=str)
+    # hdf5_f.create_dataset("Location", data=locations))
     for r in request:
         hdf5_f.create_dataset(r, data=np.array(other[r]))
     hdf5_f.close()
