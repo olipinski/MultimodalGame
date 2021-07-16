@@ -1881,7 +1881,7 @@ def eval_community(eval_list, models_dict, dev_accuracy_log, logger, flogger, ep
                                 local_rank = int(os.environ["LOCAL_RANK"])
                                 agent2 = torch.nn.parallel.DistributedDataParallel(agent2, device_ids=[local_rank],
                                                                                    output_device=local_rank)
-                            elif FLAGS.cuda:
+                            if FLAGS.cuda:
                                 agent2.cuda()
                         domain = f'In Domain Dev: Agent {i + 1} | Agent {j + 1}, ids [{id(agent1)}]/[{id(agent2)}]: '
                         _, _ = get_and_log_dev_performance(agent1, agent2, FLAGS.dataset_indomain_valid_path, True,
@@ -1915,7 +1915,7 @@ def eval_community(eval_list, models_dict, dev_accuracy_log, logger, flogger, ep
                             local_rank = int(os.environ["LOCAL_RANK"])
                             agent2 = torch.nn.parallel.DistributedDataParallel(agent2, device_ids=[local_rank],
                                                                                output_device=local_rank)
-                        elif FLAGS.cuda:
+                        if FLAGS.cuda:
                             agent2.cuda()
                     domain = f'In Domain Dev: Agent {i + 1} | Agent {j + 1}, ids [{id(agent1)}]/[{id(agent2)}]: '
                     _, _ = get_and_log_dev_performance(agent1, agent2, FLAGS.dataset_indomain_valid_path, True,
@@ -2415,6 +2415,7 @@ def run(rngen):
         global_world_size = int(os.environ["WORLD_SIZE"])
         debuglogger.info(f"Starting process {local_rank} out of {local_world_size} "
                          f"on node {global_rank} out of {global_world_size / local_world_size}")
+        torch.cuda.set_device(local_rank)
 
     # Initialize Agents
     agents = []
@@ -2488,7 +2489,7 @@ def run(rngen):
             local_rank = int(os.environ["LOCAL_RANK"])
             agent = torch.nn.parallel.DistributedDataParallel(agent, device_ids=[local_rank],
                                                               output_device=local_rank)
-        elif FLAGS.cuda:
+        if FLAGS.cuda:
             agent.cuda()
 
         flogger.Log("Agent {} id: {} Architecture: {}".format(_ + 1, id(agent), agent))
@@ -2672,7 +2673,7 @@ def run(rngen):
                             local_rank = int(os.environ["LOCAL_RANK"])
                             agent2 = torch.nn.parallel.DistributedDataParallel(agent2, device_ids=[local_rank],
                                                                                output_device=local_rank)
-                        elif FLAGS.cuda:
+                        if FLAGS.cuda:
                             agent2.cuda()
                     if i == 0 and j == 0:
                         # Report in domain development accuracy and store examples TODO: Store examples currently
@@ -3026,7 +3027,7 @@ def run(rngen):
                     local_rank = int(os.environ["LOCAL_RANK"])
                     agent2 = torch.nn.parallel.DistributedDataParallel(agent2, device_ids=[local_rank],
                                                                        output_device=local_rank)
-                elif FLAGS.cuda:
+                if FLAGS.cuda:
                     agent2.cuda()
             debuglogger.debug(f'Agent 1: {agent_idxs[0]}, Agent 1: {agent_idxs[1]}')
 
@@ -3244,12 +3245,12 @@ def run(rngen):
                 # Update agent1
                 optimizer_agent1.zero_grad()
                 loss_agent1.backward()
-                nn.utils.clip_grad_norm(agent1.parameters(), max_norm=1.)
+                nn.utils.clip_grad_norm_(agent1.parameters(), max_norm=1.)
                 optimizer_agent1.step()
                 # Update agent2
                 optimizer_agent2.zero_grad()
                 loss_agent2.backward()
-                nn.utils.clip_grad_norm(agent2.parameters(), max_norm=1.)
+                nn.utils.clip_grad_norm_(agent2.parameters(), max_norm=1.)
                 optimizer_agent2.step()
 
             # Print logs regularly
@@ -3483,7 +3484,7 @@ def run(rngen):
                         local_rank = int(os.environ["LOCAL_RANK"])
                         agent2 = torch.nn.parallel.DistributedDataParallel(agent2, device_ids=[local_rank],
                                                                            output_device=local_rank)
-                    elif FLAGS.cuda:
+                    if FLAGS.cuda:
                         agent2.cuda()
                     flogger.Log("Agent {} self communication: id {}".format(i + 1, id(agent)))
                     dev_accuracy_self_com[i], total_accuracy_com = get_and_log_dev_performance(
@@ -3519,7 +3520,7 @@ def run(rngen):
                                 local_rank = int(os.environ["LOCAL_RANK"])
                                 _agent2 = torch.nn.parallel.DistributedDataParallel(_agent2, device_ids=[local_rank],
                                                                                     output_device=local_rank)
-                            elif FLAGS.cuda:
+                            if FLAGS.cuda:
                                 _agent2.cuda()
                         else:
                             _agent2 = models_dict["agent" + str(j + 1)]
@@ -3538,8 +3539,14 @@ def run(rngen):
                     flogger.Log(f"Checkpointing a model with {_avg_accuracy} average accuracy at {step} steps")
                     # Optionally store additional information
                     data = dict(step=step, best_dev_acc=best_dev_acc)
-                    torch_save(FLAGS.checkpoint + "_{0:.4f}".format(_avg_accuracy), data, models_dict,
-                               optimizers_dict, gpu=0 if FLAGS.cuda else -1)
+                    if FLAGS.paralell:
+                        if global_rank == 0:
+                            if local_rank == 0:
+                                torch_save(FLAGS.checkpoint + "_{0:.4f}".format(_avg_accuracy), data, models_dict,
+                                           optimizers_dict, gpu=0 if FLAGS.cuda else -1)
+                    else:
+                        torch_save(FLAGS.checkpoint + "_{0:.4f}".format(_avg_accuracy), data, models_dict,
+                                   optimizers_dict, gpu=0 if FLAGS.cuda else -1)
                     flogger.Log(f"Accuracy reached at least 75% on average, stopping training at step {step}...")
                     sys.exit()
 
@@ -3548,16 +3555,28 @@ def run(rngen):
                 flogger.Log("Checkpointing.")
                 # Optionally store additional information
                 data = dict(step=step, best_dev_acc=best_dev_acc)
-                torch_save(FLAGS.checkpoint, data, models_dict,
-                           optimizers_dict, gpu=0 if FLAGS.cuda else -1)
+                if FLAGS.paralell:
+                    if global_rank == 0:
+                        if local_rank == 0:
+                            torch_save(FLAGS.checkpoint, data, models_dict,
+                                       optimizers_dict, gpu=0 if FLAGS.cuda else -1)
+                else:
+                    torch_save(FLAGS.checkpoint, data, models_dict,
+                               optimizers_dict, gpu=0 if FLAGS.cuda else -1)
 
             # Save separate copy of model every FLAGS.save_distinct_interval steps
             if step >= FLAGS.save_after and step % FLAGS.save_distinct_interval == 0:
                 flogger.Log(f"Checkpointing a distinct model at {step} steps")
                 # Optionally store additional information
                 data = dict(step=step, best_dev_acc=best_dev_acc)
-                torch_save(FLAGS.checkpoint + "_" + str(step), data, models_dict,
-                           optimizers_dict, gpu=0 if FLAGS.cuda else -1)
+                if FLAGS.paralell:
+                    if global_rank == 0:
+                        if local_rank == 0:
+                            torch_save(FLAGS.checkpoint + "_" + str(step), data, models_dict,
+                                       optimizers_dict, gpu=0 if FLAGS.cuda else -1)
+                else:
+                    torch_save(FLAGS.checkpoint + "_" + str(step), data, models_dict,
+                               optimizers_dict, gpu=0 if FLAGS.cuda else -1)
 
             # Increment batch step
             step += 1
@@ -3820,9 +3839,4 @@ if __name__ == '__main__':
         torch.manual_seed(FLAGS.random_seed)
     else:
         rng = np.random.default_rng()
-    # Initialise DDP if requested
-    if FLAGS.parallel:
-        proc_count = int(os.environ["LOCAL_WORLD_SIZE"])
-        mp.spawn(run, nprocs=proc_count, args=(rng,))
-    else:
-        run(rng)
+    run(rng)
