@@ -15,7 +15,6 @@ import torch.optim as optim
 from torchvision.utils import save_image
 
 # For distrbuted computing
-import torch.multiprocessing as mp
 import torch.distributed as dist
 
 from sklearn.metrics import confusion_matrix
@@ -1868,12 +1867,12 @@ def eval_community(eval_list, models_dict, dev_accuracy_log, logger, flogger, ep
                                            pcd=FLAGS.pcd,
                                            scd=FLAGS.scd)
                             agent2.load_state_dict(agent1.state_dict())
+                            if FLAGS.cuda:
+                                agent2.cuda()
                             if FLAGS.parallel:
                                 local_rank = int(os.environ["LOCAL_RANK"])
                                 agent2 = torch.nn.parallel.DistributedDataParallel(agent2, device_ids=[local_rank],
                                                                                    output_device=local_rank)
-                            if FLAGS.cuda:
-                                agent2.cuda()
                         domain = f'In Domain Dev: Agent {i + 1} | Agent {j + 1}, ids [{id(agent1)}]/[{id(agent2)}]: '
                         _, _ = get_and_log_dev_performance(agent1, agent2, FLAGS.dataset_indomain_valid_path, True,
                                                            dev_accuracy_log, logger, flogger, domain, epoch, step,
@@ -1902,12 +1901,12 @@ def eval_community(eval_list, models_dict, dev_accuracy_log, logger, flogger, ep
                                        pcd=FLAGS.pcd,
                                        scd=FLAGS.scd)
                         agent2.load_state_dict(agent1.state_dict())
+                        if FLAGS.cuda:
+                            agent2.cuda()
                         if FLAGS.parallel:
                             local_rank = int(os.environ["LOCAL_RANK"])
                             agent2 = torch.nn.parallel.DistributedDataParallel(agent2, device_ids=[local_rank],
                                                                                output_device=local_rank)
-                        if FLAGS.cuda:
-                            agent2.cuda()
                     domain = f'In Domain Dev: Agent {i + 1} | Agent {j + 1}, ids [{id(agent1)}]/[{id(agent2)}]: '
                     _, _ = get_and_log_dev_performance(agent1, agent2, FLAGS.dataset_indomain_valid_path, True,
                                                        dev_accuracy_log, logger, flogger, domain, epoch, step, i_batch,
@@ -2038,8 +2037,14 @@ def exchange(a1, a2, exchange_args):
     r_2 = []
 
     # First message (default is 0)
-    m_binary = Variable(torch.FloatTensor(batch_size, agent1.m_dim).fill_(
-        FLAGS.first_msg), volatile=not train)
+    if not train:
+        with torch.no_grad():
+            m_binary = torch.FloatTensor(batch_size, agent1.m_dim).fill_(
+                FLAGS.first_msg)
+    else:
+        m_binary = torch.FloatTensor(batch_size, agent1.m_dim).fill_(
+            FLAGS.first_msg)
+
     if FLAGS.cuda:
         m_binary = m_binary.cuda()
 
@@ -2061,7 +2066,7 @@ def exchange(a1, a2, exchange_args):
         debuglogger.warning(f'Data context not supported currently')
         sys.exit()
     else:
-        debuglogger.info(f'Inside exchange: Train status: {train}, Message: {m_binary}')
+        debuglogger.debug(f'Inside exchange: Train status: {train}, Message: {m_binary}')
         s_1e, m_1e, y_1e, r_1e = agent1(
             data['im_feats_1'],
             m_binary,
@@ -2476,12 +2481,12 @@ def run(rngen):
                       pcd=FLAGS.pcd,
                       scd=FLAGS.scd)
 
+        if FLAGS.cuda:
+            agent.cuda()
         if FLAGS.parallel:
             local_rank = int(os.environ["LOCAL_RANK"])
             agent = torch.nn.parallel.DistributedDataParallel(agent, device_ids=[local_rank],
                                                               output_device=local_rank)
-        if FLAGS.cuda:
-            agent.cuda()
 
         flogger.Log("Agent {} id: {} Architecture: {}".format(_ + 1, id(agent), agent))
         total_params = sum([functools.reduce(lambda x, z: x * z, p.size(), 1.0)
@@ -2660,12 +2665,13 @@ def run(rngen):
                                        pcd=FLAGS.pcd,
                                        scd=FLAGS.scd)
                         agent2.load_state_dict(agent1.state_dict())
+                        if FLAGS.cuda:
+                            agent2.cuda()
                         if FLAGS.parallel:
                             local_rank = int(os.environ["LOCAL_RANK"])
                             agent2 = torch.nn.parallel.DistributedDataParallel(agent2, device_ids=[local_rank],
                                                                                output_device=local_rank)
-                        if FLAGS.cuda:
-                            agent2.cuda()
+
                     if i == 0 and j == 0:
                         # Report in domain development accuracy and store examples TODO: Store examples currently
                         #  disabled. To fix store examples - image saving disabled because it clogs the memory and
@@ -3014,12 +3020,13 @@ def run(rngen):
                                pcd=FLAGS.pcd,
                                scd=FLAGS.scd)
                 agent2.load_state_dict(agent1.state_dict())
+                if FLAGS.cuda:
+                    agent2.cuda()
                 if FLAGS.parallel:
                     local_rank = int(os.environ["LOCAL_RANK"])
                     agent2 = torch.nn.parallel.DistributedDataParallel(agent2, device_ids=[local_rank],
                                                                        output_device=local_rank)
-                if FLAGS.cuda:
-                    agent2.cuda()
+
             debuglogger.debug(f'Agent 1: {agent_idxs[0]}, Agent 1: {agent_idxs[1]}')
 
             target = batch["target"]
@@ -3470,12 +3477,13 @@ def run(rngen):
                                    pcd=FLAGS.pcd,
                                    scd=FLAGS.scd)
                     agent2.load_state_dict(agent1.state_dict())
+                    if FLAGS.cuda:
+                        agent2.cuda()
                     if FLAGS.parallel:
                         local_rank = int(os.environ["LOCAL_RANK"])
                         agent2 = torch.nn.parallel.DistributedDataParallel(agent2, device_ids=[local_rank],
                                                                            output_device=local_rank)
-                    if FLAGS.cuda:
-                        agent2.cuda()
+
                     flogger.Log("Agent {} self communication: id {}".format(i + 1, id(agent)))
                     dev_accuracy_self_com[i], total_accuracy_com = get_and_log_dev_performance(
                         agent1, agent2, FLAGS.dataset_indomain_valid_path, True, dev_accuracy_self_com[i], logger,
@@ -3506,12 +3514,13 @@ def run(rngen):
                                             pcd=FLAGS.pcd,
                                             scd=FLAGS.scd)
                             _agent2.load_state_dict(agent1.state_dict())
+                            if FLAGS.cuda:
+                                _agent2.cuda()
                             if FLAGS.parallel:
                                 local_rank = int(os.environ["LOCAL_RANK"])
                                 _agent2 = torch.nn.parallel.DistributedDataParallel(_agent2, device_ids=[local_rank],
                                                                                     output_device=local_rank)
-                            if FLAGS.cuda:
-                                _agent2.cuda()
+
                         else:
                             _agent2 = models_dict["agent" + str(j + 1)]
                         dev_accuracy_id_pairs[i], total_accuracy_com = get_and_log_dev_performance(
