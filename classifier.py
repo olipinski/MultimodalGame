@@ -7,7 +7,6 @@ import random
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.autograd import Variable
 import torch.optim as optim
 
 from misc import reset_parameters_util_x
@@ -90,18 +89,18 @@ def load_classifier_dataset(data_path, batch_size, random_seed, shuffle, cuda, n
             current_batch_indices = [b + j for b in batch_indices]
             # print(f'batch idxs: {batch_indices}')
             if j == 0:
-                bx = Variable(torch.from_numpy(x[current_batch_indices]).float())
-                bs = Variable(torch.from_numpy(s[current_batch_indices]).float())
-                bc = Variable(torch.from_numpy(c[current_batch_indices]).float())
+                bx = torch.from_numpy(x[current_batch_indices]).float()
+                bs = torch.from_numpy(s[current_batch_indices]).float()
+                bc = torch.from_numpy(c[current_batch_indices]).float()
             else:
-                _x = Variable(torch.from_numpy(x[current_batch_indices]).float())
-                _s = Variable(torch.from_numpy(s[current_batch_indices]).float())
-                _c = Variable(torch.from_numpy(c[current_batch_indices]).float())
+                _x = torch.from_numpy(x[current_batch_indices]).float()
+                _s = torch.from_numpy(s[current_batch_indices]).float()
+                _c = torch.from_numpy(c[current_batch_indices]).float()
                 bx = torch.cat([bx, _x], dim=1)
                 bs = torch.cat([bs, _x], dim=1)
                 bc = torch.cat([bc, _x], dim=1)
 
-        by = Variable(torch.from_numpy(y[batch_indices]).float())
+        by = torch.from_numpy(y[batch_indices]).float()
         by = torch.unsqueeze(by, dim=1)
         if cuda:
             bx = bx.cuda()

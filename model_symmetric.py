@@ -9,7 +9,6 @@ import logging
 import pickle
 
 import torch
-from torch.autograd import Variable as _Variable
 import torch.nn.functional as F
 import torch.nn as nn
 import torch.optim as optim
@@ -42,14 +41,6 @@ SHAPES = ['circle', 'cross', 'ellipse', 'pentagon', 'rectangle', 'semicircle', '
 COLORS = ['blue', 'cyan', 'gray', 'green', 'magenta', 'red', 'yellow']
 OOD_EXAMPLES = ['square_red', 'triangle_green', 'circle_blue', 'rectangle_yellow', 'cross_magenta', 'ellipse_cyan']
 MAX_EXAMPLES_TO_SAVE = 200
-
-
-def Variable(*args, **kwargs):
-    var = _Variable(*args, **kwargs)
-    if FLAGS.cuda:
-        var = var.cuda()
-    return var
-
 
 def loglikelihood(log_prob, target):
     """
@@ -478,7 +469,7 @@ def get_similarity(dataset_path, in_domain_eval, agent1, agent2, a1_group, a2_gr
         im_feats_1 = batch["im_feats_1"]
         im_feats_2 = batch["im_feats_2"]
         p = batch["p"]
-        desc = Variable(batch["texts_vec"])
+        desc = batch["texts_vec"]
         _batch_size = target.size(0)
 
         true_labels.append(target.cpu().numpy().reshape(-1))
@@ -1146,7 +1137,7 @@ def eval_dev(dataset_path, top_k, agent1, agent2, logger, flogger, epoch, step, 
         im_feats_1 = batch["im_feats_1"]
         im_feats_2 = batch["im_feats_2"]
         p = batch["p"]
-        desc = Variable(batch["texts_vec"])
+        desc = batch["texts_vec"]
         _batch_size = target.size(0)
 
         true_labels.append(target.cpu().numpy().reshape(-1))
@@ -1925,7 +1916,7 @@ def eval_community(eval_list, models_dict, dev_accuracy_log, logger, flogger, ep
 
 def corrupt_message(corrupt_region, agent, binary_message):
     # Obtain mask
-    mask = Variable(build_mask(corrupt_region, agent.m_dim))
+    mask = build_mask(corrupt_region, agent.m_dim)
     mask_broadcast = mask.view(1, agent.m_dim).expand_as(binary_message)
     # Subtract the mask to change values, but need to get absolute value
     # to set -1 values to 1 to essentially "flip" all the bits.
@@ -2029,10 +2020,10 @@ def exchange(a1, a2, exchange_args):
     batch_size = data["im_feats_1"].size(0)
 
     # Pad with one column of ones.
-    stop_mask_1 = [Variable(torch.ones(batch_size, 1).byte())]
+    stop_mask_1 = [torch.ones(batch_size, 1).byte()]
     stop_feat_1 = []
     stop_prob_1 = []
-    stop_mask_2 = [Variable(torch.ones(batch_size, 1).byte())]
+    stop_mask_2 = [torch.ones(batch_size, 1).byte()]
     stop_feat_2 = []
     stop_prob_2 = []
     feats_1 = []
@@ -2128,7 +2119,7 @@ def exchange(a1, a2, exchange_args):
                     sub = sub.cuda()
                 new_m_prob = m_1e_probs.data - sub + add
                 new_m_binary = torch.clamp(new_m_prob, 0, 1).round()
-                m_1e_binary = _Variable(new_m_binary)
+                m_1e_binary = new_m_binary
                 debuglogger.debug(f'Old msg: {m_binary_1.data}, old prob: {m_probs_1.data}')
                 debuglogger.debug(f'Sub: {sub}, add: {add}')
                 debuglogger.debug(f'New msg: {new_m_binary}, new prob: {new_m_prob}')
@@ -2174,7 +2165,7 @@ def exchange(a1, a2, exchange_args):
                     sub = sub.cuda()
                 new_m_prob = m_2e_probs.data - sub + add
                 new_m_binary = torch.clamp(new_m_prob, 0, 1).round()
-                m_2e_binary = _Variable(new_m_binary)
+                m_2e_binary = new_m_binary
                 debuglogger.debug(f'Old msg: {m_binary_1.data}, old prob: {m_probs_1.data}')
                 debuglogger.debug(f'Sub: {sub}, add: {add}')
                 debuglogger.debug(f'New msg: {new_m_binary}, new prob: {new_m_prob}')
@@ -2295,11 +2286,11 @@ def calculate_loss_binary(binary_features, binary_probs, rewards, baseline_rewar
         rewards = rewards.cuda()
         baseline_rewards = baseline_rewards.cuda()
 
-    log_p_z = Variable(binary_features.data) * torch.log(binary_probs + 1e-8) + \
-        (1 - Variable(binary_features.data)) * \
-        torch.log(1 - binary_probs + 1e-8)
+    log_p_z = binary_features.data * torch.log(binary_probs + 1e-8) + \
+              (1 - binary_features.data) * \
+              torch.log(1 - binary_probs + 1e-8)
     log_p_z = log_p_z.sum(1)
-    weight = Variable(rewards) - Variable(baseline_rewards)
+    weight = rewards - baseline_rewards
     if rewards.size(0) > 1:  # Ensures weights are not larger than 1
         max_w = torch.maximum(torch.tensor(1.0), torch.std(weight))
         weight = weight / max_w
@@ -2331,7 +2322,7 @@ def multistep_loss_binary(binary_features, binary_probs, rewards, baseline_rewar
 
 
 def calculate_loss_bas(baseline_scores, rewards):
-    loss_bas = nn.MSELoss()(baseline_scores, Variable(rewards))
+    loss_bas = nn.MSELoss()(baseline_scores, rewards)
     return loss_bas
 
 
@@ -2384,9 +2375,9 @@ def get_classification_loss_and_stats(predictions, targets):
     probabilities = F.softmax(predictions, dim=1)
     ent = (torch.log(probabilities + 1e-8) * probabilities).sum(1).mean()
     debuglogger.debug(f'Mean entropy: {-ent.item()}')
-    nll_loss = nn.NLLLoss()(distribution, Variable(targets))
-    logs = loglikelihood(Variable(distribution.data),
-                         Variable(targets.view(-1, 1)))
+    nll_loss = nn.NLLLoss()(distribution, targets)
+    logs = loglikelihood(distribution.data,
+                         targets.view(-1, 1))
     return distribution, max_dist, argmax, ent, nll_loss, logs
 
 
@@ -3031,12 +3022,11 @@ def run(rngen):
                     agent2.cuda()
             debuglogger.debug(f'Agent 1: {agent_idxs[0]}, Agent 1: {agent_idxs[1]}')
 
-            # Converted to Variable in get_classification_loss_and_stats
             target = batch["target"]
-            im_feats_1 = batch["im_feats_1"]  # Already Variable
-            im_feats_2 = batch["im_feats_2"]  # Already Variable
+            im_feats_1 = batch["im_feats_1"]
+            im_feats_2 = batch["im_feats_2"]
             p = batch["p"]
-            desc = Variable(batch["texts_vec"])
+            desc = batch["texts_vec"]
 
             # GPU support
             if FLAGS.cuda:
@@ -3219,8 +3209,8 @@ def run(rngen):
                     # TODO
                     pass
             else:
-                loss_baseline_1 = Variable(torch.zeros(1))
-                loss_baseline_2 = Variable(torch.zeros(1))
+                loss_baseline_1 = torch.zeros(1)
+                loss_baseline_2 = torch.zeros(1)
 
             loss_agent1 += FLAGS.baseline_loss_weight * loss_baseline_1
             loss_agent2 += FLAGS.baseline_loss_weight * loss_baseline_2

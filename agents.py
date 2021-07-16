@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.autograd import Variable as _Variable
 import math
 import numpy as np
 import logging
@@ -171,7 +170,7 @@ class MessageProcessor(nn.Module):
             return self.rnn(m, h)
         else:
             debuglogger.debug(f'Ignoring message, using blank instead...')
-            blank_msg = _Variable(torch.zeros_like(m.data))
+            blank_msg = torch.zeros_like(m.data)
             if self.use_cuda:
                 blank_msg = blank_msg.cuda()
             return self.rnn(blank_msg, h)
@@ -224,8 +223,8 @@ class MessageGenerator(nn.Module):
                 rand_num = np.random.rand(*probs_.shape)
                 # debuglogger.debug(f'rand_num: {rand_num}')
                 # debuglogger.info(f'probs: {probs_}')
-                w_binary = _Variable(torch.from_numpy(
-                    (rand_num < probs_).astype('float32')))
+                w_binary = torch.from_numpy(
+                    (rand_num < probs_).astype('float32'))
             else:
                 # debuglogger.info(f"Eval mode, rounding...")
                 w_binary = torch.round(w_probs).detach()
@@ -323,7 +322,7 @@ class Agent(nn.Module):
         self.h_z = None
 
     def initial_state(self, batch_size):
-        h = _Variable(torch.zeros(batch_size, self.h_dim))
+        h = torch.zeros(batch_size, self.h_dim)
         if self.use_cuda:
             h = h.cuda()
         return h
@@ -442,8 +441,8 @@ class Agent(nn.Module):
             rand_num = np.random.rand(*prob_.shape)
             # debuglogger.debug(f'rand_num: {rand_num}')
             # debuglogger.debug(f'prob: {prob_}')
-            s_binary = _Variable(torch.from_numpy(
-                (rand_num < prob_).astype('float32')))
+            s_binary = torch.from_numpy(
+                (rand_num < prob_).astype('float32'))
             if self.use_cuda:
                 s_binary = s_binary.cuda()
         else:
@@ -496,9 +495,9 @@ if __name__ == "__main__":
                   scd,
                   )
 
-    x = _Variable(torch.ones(batch_size, 3, im_dim, im_dim))
-    m = _Variable(torch.ones(batch_size, m_dim))
-    desc = _Variable(torch.ones(batch_size, num_classes, desc_dim))
+    x = torch.ones(batch_size, 3, im_dim, im_dim)
+    m = torch.ones(batch_size, m_dim)
+    desc = torch.ones(batch_size, num_classes, desc_dim)
 
     summary(agent, input_data=(x, m, desc, use_message, batch_size, training))
 

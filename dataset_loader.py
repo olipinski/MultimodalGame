@@ -7,7 +7,6 @@ import numpy as np
 import copy
 
 from torchvision.utils import save_image
-from torch.autograd import Variable
 from nltk.tokenize import word_tokenize
 from PIL import Image, ImageDraw
 
@@ -312,8 +311,8 @@ def load_shapeworld_dataset(data_path, embed_path, mode, size, ds_type, name, ba
                                 "desc_set_lens": desc_set_lens}
 
         # Extract image feats
-        m_im_1 = Variable(batch['masked_im_1'])
-        m_im_2 = Variable(batch['masked_im_2'])
+        m_im_1 = batch['masked_im_1']
+        m_im_2 = batch['masked_im_2']
         if cuda:
             m_im_1 = m_im_1.cuda()
             m_im_2 = m_im_2.cuda()
