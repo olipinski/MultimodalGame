@@ -1872,7 +1872,8 @@ def eval_community(eval_list, models_dict, dev_accuracy_log, logger, flogger, ep
                             if FLAGS.parallel:
                                 local_rank = int(os.environ["LOCAL_RANK"])
                                 agent2 = torch.nn.parallel.DistributedDataParallel(agent2, device_ids=[local_rank],
-                                                                                   output_device=local_rank)
+                                                                                   output_device=local_rank,
+                                                                                   find_unused_parameters=True)
                         domain = f'In Domain Dev: Agent {i + 1} | Agent {j + 1}, ids [{id(agent1)}]/[{id(agent2)}]: '
                         _, _ = get_and_log_dev_performance(agent1, agent2, FLAGS.dataset_indomain_valid_path, True,
                                                            dev_accuracy_log, logger, flogger, domain, epoch, step,
@@ -1906,7 +1907,8 @@ def eval_community(eval_list, models_dict, dev_accuracy_log, logger, flogger, ep
                         if FLAGS.parallel:
                             local_rank = int(os.environ["LOCAL_RANK"])
                             agent2 = torch.nn.parallel.DistributedDataParallel(agent2, device_ids=[local_rank],
-                                                                               output_device=local_rank)
+                                                                               output_device=local_rank,
+                                                                               find_unused_parameters=True)
                     domain = f'In Domain Dev: Agent {i + 1} | Agent {j + 1}, ids [{id(agent1)}]/[{id(agent2)}]: '
                     _, _ = get_and_log_dev_performance(agent1, agent2, FLAGS.dataset_indomain_valid_path, True,
                                                        dev_accuracy_log, logger, flogger, domain, epoch, step, i_batch,
@@ -2319,9 +2321,9 @@ def calculate_loss_binary(binary_features, binary_probs, rewards, baseline_rewar
               torch.log(1 - binary_probs + 1e-8)
     log_p_z = log_p_z.sum(1)
     if FLAGS.cuda:
-        weight = torch.tensor(rewards).cuda() - torch.tensor(baseline_rewards).cuda()
+        weight = rewards.clone().detach().cuda() - baseline_rewards.clone().detach().cuda()
     else:
-        weight = torch.tensor(rewards) - torch.tensor(baseline_rewards)
+        weight = rewards.clone().detach() - baseline_rewards.clone().detach()
 
     if rewards.size(0) > 1:  # Ensures weights are not larger than 1
         max_w = torch.maximum(torch.tensor(1.0), torch.std(weight))
@@ -2447,8 +2449,8 @@ def run(rngen):
         global_rank = int(os.environ["RANK"])
         local_world_size = int(os.environ["LOCAL_WORLD_SIZE"])
         global_world_size = int(os.environ["WORLD_SIZE"])
-        debuglogger.info(f"Starting process {local_rank} out of {local_world_size} "
-                         f"on node {global_rank} out of {global_world_size / local_world_size}")
+        debuglogger.info(f"Starting local process {local_rank} out of {local_world_size} "
+                         f"globally {global_rank} out of {global_world_size}")
         torch.cuda.set_device(local_rank)
         debuglogger.info(f"Our rank is {local_rank} with GPU device {torch.cuda.current_device()} and we have"
                          f" {torch.cuda.device_count()} visible device(s)")
@@ -2526,7 +2528,7 @@ def run(rngen):
         if FLAGS.parallel:
             local_rank = int(os.environ["LOCAL_RANK"])
             agent = torch.nn.parallel.DistributedDataParallel(agent, device_ids=[local_rank],
-                                                              output_device=local_rank)
+                                                              output_device=local_rank, find_unused_parameters=True)
 
         flogger.Log("Agent {} id: {} Architecture: {}".format(_ + 1, id(agent), agent))
         total_params = sum([functools.reduce(lambda x, z: x * z, p.size(), 1.0)
@@ -2710,7 +2712,8 @@ def run(rngen):
                         if FLAGS.parallel:
                             local_rank = int(os.environ["LOCAL_RANK"])
                             agent2 = torch.nn.parallel.DistributedDataParallel(agent2, device_ids=[local_rank],
-                                                                               output_device=local_rank)
+                                                                               output_device=local_rank,
+                                                                               find_unused_parameters=True)
 
                     if i == 0 and j == 0:
                         # Report in domain development accuracy and store examples TODO: Store examples currently
@@ -3065,7 +3068,8 @@ def run(rngen):
                 if FLAGS.parallel:
                     local_rank = int(os.environ["LOCAL_RANK"])
                     agent2 = torch.nn.parallel.DistributedDataParallel(agent2, device_ids=[local_rank],
-                                                                       output_device=local_rank)
+                                                                       output_device=local_rank,
+                                                                       find_unused_parameters=True)
 
             debuglogger.debug(f'Agent 1: {agent_idxs[0]}, Agent 1: {agent_idxs[1]}')
 
@@ -3525,7 +3529,8 @@ def run(rngen):
                     if FLAGS.parallel:
                         local_rank = int(os.environ["LOCAL_RANK"])
                         agent2 = torch.nn.parallel.DistributedDataParallel(agent2, device_ids=[local_rank],
-                                                                           output_device=local_rank)
+                                                                           output_device=local_rank,
+                                                                           find_unused_parameters=True)
 
                     flogger.Log("Agent {} self communication: id {}".format(i + 1, id(agent)))
                     dev_accuracy_self_com[i], total_accuracy_com = get_and_log_dev_performance(
@@ -3562,7 +3567,8 @@ def run(rngen):
                             if FLAGS.parallel:
                                 local_rank = int(os.environ["LOCAL_RANK"])
                                 _agent2 = torch.nn.parallel.DistributedDataParallel(_agent2, device_ids=[local_rank],
-                                                                                    output_device=local_rank)
+                                                                                    output_device=local_rank,
+                                                                                    find_unused_parameters=True)
 
                         else:
                             _agent2 = models_dict["agent" + str(j + 1)]
