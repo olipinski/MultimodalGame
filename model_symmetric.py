@@ -1917,12 +1917,12 @@ def corrupt_message(corrupt_region, agent, binary_message):
     # Obtain mask
     if FLAGS.parallel:
         mask = build_mask(corrupt_region, agent.module.m_dim)
-        if FLAGS.cuda():
+        if FLAGS.cuda:
             mask = mask.cuda()
         mask_broadcast = mask.view(1, agent.module.m_dim).expand_as(binary_message)
     else:
         mask = build_mask(corrupt_region, agent.m_dim)
-        if FLAGS.cuda():
+        if FLAGS.cuda:
             mask = mask.cuda()
         mask_broadcast = mask.view(1, agent.m_dim).expand_as(binary_message)
     # Subtract the mask to change values, but need to get absolute value
@@ -2027,14 +2027,14 @@ def exchange(a1, a2, exchange_args):
     batch_size = data["im_feats_1"].size(0)
 
     # Pad with one column of ones.
-    if FLAGS.cuda():
+    if FLAGS.cuda:
         stop_mask_1 = [torch.ones(batch_size, 1).byte().cuda()]
     else:
         stop_mask_1 = [torch.ones(batch_size, 1).byte()]
 
     stop_feat_1 = []
     stop_prob_1 = []
-    if FLAGS.cuda():
+    if FLAGS.cuda:
         stop_mask_2 = [torch.ones(batch_size, 1).byte().cuda()]
     else:
         stop_mask_2 = [torch.ones(batch_size, 1).byte()]
