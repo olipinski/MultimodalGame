@@ -1917,9 +1917,13 @@ def corrupt_message(corrupt_region, agent, binary_message):
     # Obtain mask
     if FLAGS.parallel:
         mask = build_mask(corrupt_region, agent.module.m_dim)
+        if FLAGS.cuda():
+            mask = mask.cuda()
         mask_broadcast = mask.view(1, agent.module.m_dim).expand_as(binary_message)
     else:
         mask = build_mask(corrupt_region, agent.m_dim)
+        if FLAGS.cuda():
+            mask = mask.cuda()
         mask_broadcast = mask.view(1, agent.m_dim).expand_as(binary_message)
     # Subtract the mask to change values, but need to get absolute value
     # to set -1 values to 1 to essentially "flip" all the bits.
@@ -2023,10 +2027,18 @@ def exchange(a1, a2, exchange_args):
     batch_size = data["im_feats_1"].size(0)
 
     # Pad with one column of ones.
-    stop_mask_1 = [torch.ones(batch_size, 1).byte()]
+    if FLAGS.cuda():
+        stop_mask_1 = [torch.ones(batch_size, 1).byte().cuda()]
+    else:
+        stop_mask_1 = [torch.ones(batch_size, 1).byte()]
+
     stop_feat_1 = []
     stop_prob_1 = []
-    stop_mask_2 = [torch.ones(batch_size, 1).byte()]
+    if FLAGS.cuda():
+        stop_mask_2 = [torch.ones(batch_size, 1).byte().cuda()]
+    else:
+        stop_mask_2 = [torch.ones(batch_size, 1).byte()]
+
     stop_feat_2 = []
     stop_prob_2 = []
     feats_1 = []
@@ -2339,7 +2351,10 @@ def multistep_loss_binary(binary_features, binary_probs, rewards, baseline_rewar
 
 
 def calculate_loss_bas(baseline_scores, rewards):
-    loss_bas = nn.MSELoss()(baseline_scores, rewards)
+    if FLAGS.cuda:
+        loss_bas = nn.MSELoss()(baseline_scores, rewards.cuda())
+    else:
+        loss_bas = nn.MSELoss()(baseline_scores, rewards)
     return loss_bas
 
 
@@ -2387,13 +2402,21 @@ def get_classification_loss_and_stats(predictions, targets):
         - nll_loss: Negative Log Likelihood loss between the predictions and targets
         - logs: Individual log likelihoods across the batch
     """
+    if FLAGS.cuda:
+        targets = targets.cuda()
+
     distribution = F.log_softmax(predictions, dim=1)
     max_dist, argmax = distribution.data.max(1)
     probabilities = F.softmax(predictions, dim=1)
     ent = (torch.log(probabilities + 1e-8) * probabilities).sum(1).mean()
     debuglogger.debug(f'Mean entropy: {-ent.item()}')
     nll_loss = nn.NLLLoss()(distribution, targets)
-    logs = loglikelihood(distribution.data,
+    if FLAGS.cuda:
+        distribution = distribution.cuda()
+        logs = loglikelihood(distribution.data,
+                         targets.view(-1, 1).cuda())
+    else:
+        logs = loglikelihood(distribution.data,
                          targets.view(-1, 1))
     return distribution, max_dist, argmax, ent, nll_loss, logs
 
@@ -3232,6 +3255,9 @@ def run(rngen):
             else:
                 loss_baseline_1 = torch.zeros(1)
                 loss_baseline_2 = torch.zeros(1)
+                if FLAGS.cuda:
+                    loss_baseline_1 = loss_baseline_1.cuda()
+                    loss_baseline_2 = loss_baseline_2.cuda()
 
             loss_agent1 += FLAGS.baseline_loss_weight * loss_baseline_1
             loss_agent2 += FLAGS.baseline_loss_weight * loss_baseline_2
