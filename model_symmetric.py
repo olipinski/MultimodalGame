@@ -2040,6 +2040,7 @@ def exchange(a1, a2, exchange_args):
     r_1 = []
     r_2 = []
 
+
     # First message (default is 0)
     if not train:
         with torch.no_grad():
@@ -2423,6 +2424,8 @@ def run(rngen):
         debuglogger.info(f"Starting process {local_rank} out of {local_world_size} "
                          f"on node {global_rank} out of {global_world_size / local_world_size}")
         torch.cuda.set_device(local_rank)
+        debuglogger.info(f"Our rank is {local_rank} with GPU device {torch.cuda.current_device()} and we have"
+                         f" {torch.cuda.device_count()} visible device(s)")
 
     # Initialize Agents
     agents = []
@@ -3844,6 +3847,9 @@ if __name__ == '__main__':
     logging.basicConfig(format=FORMAT)
     debuglogger = logging.getLogger('main_logger')
     debuglogger.setLevel(FLAGS.debug_log_level)
+    # To debug NCCL connections
+    os.environ["NCCL_DEBUG"] = "INFO"
+
     if FLAGS.random_seed != -1:
         rng = np.random.default_rng(FLAGS.random_seed)
         torch.manual_seed(FLAGS.random_seed)
