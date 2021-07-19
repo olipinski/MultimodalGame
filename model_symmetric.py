@@ -1915,8 +1915,12 @@ def eval_community(eval_list, models_dict, dev_accuracy_log, logger, flogger, ep
 
 def corrupt_message(corrupt_region, agent, binary_message):
     # Obtain mask
-    mask = build_mask(corrupt_region, agent.m_dim)
-    mask_broadcast = mask.view(1, agent.m_dim).expand_as(binary_message)
+    if FLAGS.parallel:
+        mask = build_mask(corrupt_region, agent.module.m_dim)
+        mask_broadcast = mask.view(1, agent.module.m_dim).expand_as(binary_message)
+    else:
+        mask = build_mask(corrupt_region, agent.m_dim)
+        mask_broadcast = mask.view(1, agent.m_dim).expand_as(binary_message)
     # Subtract the mask to change values, but need to get absolute value
     # to set -1 values to 1 to essentially "flip" all the bits.
     binary_message = (binary_message - mask_broadcast).abs()
@@ -2039,11 +2043,15 @@ def exchange(a1, a2, exchange_args):
     # First message (default is 0)
     if not train:
         with torch.no_grad():
-            m_binary = torch.FloatTensor(batch_size, agent1.m_dim).fill_(
-                FLAGS.first_msg)
+            if FLAGS.parallel:
+                m_binary = torch.FloatTensor(batch_size, agent1.module.m_dim).fill_(FLAGS.first_msg)
+            else:
+                m_binary = torch.FloatTensor(batch_size, agent1.m_dim).fill_(FLAGS.first_msg)
     else:
-        m_binary = torch.FloatTensor(batch_size, agent1.m_dim).fill_(
-            FLAGS.first_msg)
+        if FLAGS.parallel:
+            m_binary = torch.FloatTensor(batch_size, agent1.module.m_dim).fill_(FLAGS.first_msg)
+        else:
+            m_binary = torch.FloatTensor(batch_size, agent1.m_dim).fill_(FLAGS.first_msg)
 
     if FLAGS.cuda:
         m_binary = m_binary.cuda()
@@ -2054,9 +2062,12 @@ def exchange(a1, a2, exchange_args):
     else:
         agent1.eval()
         agent2.eval()
-
-    agent1.reset_state()
-    agent2.reset_state()
+    if FLAGS.parallel:
+        agent1.module.reset_state()
+        agent2.module.reset_state()
+    else:
+        agent1.reset_state()
+        agent2.reset_state()
 
     # The message is ignored initially
     use_message = False
