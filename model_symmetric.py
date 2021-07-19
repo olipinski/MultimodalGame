@@ -2306,7 +2306,6 @@ def get_outp(y, masks):
     else:
         return y[-1], negentropy
 
-
 def calculate_loss_binary(binary_features, binary_probs, rewards, baseline_rewards, entropy_penalty):
     """Calculates the reinforcement learning loss on the agent communication vectors"""
     if FLAGS.cuda:
@@ -2315,11 +2314,15 @@ def calculate_loss_binary(binary_features, binary_probs, rewards, baseline_rewar
         rewards = rewards.cuda()
         baseline_rewards = baseline_rewards.cuda()
 
-    log_p_z = binary_features.data * torch.log(binary_probs + 1e-8) + \
-              (1 - binary_features.data) * \
+    log_p_z = binary_features * torch.log(binary_probs + 1e-8) + \
+              (1 - binary_features) * \
               torch.log(1 - binary_probs + 1e-8)
     log_p_z = log_p_z.sum(1)
-    weight = rewards - baseline_rewards
+    if FLAGS.cuda:
+        weight = torch.tensor(rewards).cuda() - torch.tensor(baseline_rewards).cuda()
+    else:
+        weight = torch.tensor(rewards) - torch.tensor(baseline_rewards)
+
     if rewards.size(0) > 1:  # Ensures weights are not larger than 1
         max_w = torch.maximum(torch.tensor(1.0), torch.std(weight))
         weight = weight / max_w
@@ -2414,10 +2417,10 @@ def get_classification_loss_and_stats(predictions, targets):
     if FLAGS.cuda:
         distribution = distribution.cuda()
         logs = loglikelihood(distribution.data,
-                         targets.view(-1, 1).cuda())
+                             targets.view(-1, 1).cuda())
     else:
         logs = loglikelihood(distribution.data,
-                         targets.view(-1, 1))
+                             targets.view(-1, 1))
     return distribution, max_dist, argmax, ent, nll_loss, logs
 
 
