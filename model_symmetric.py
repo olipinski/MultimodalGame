@@ -41,6 +41,7 @@ COLORS = ['blue', 'cyan', 'gray', 'green', 'magenta', 'red', 'yellow']
 OOD_EXAMPLES = ['square_red', 'triangle_green', 'circle_blue', 'rectangle_yellow', 'cross_magenta', 'ellipse_cyan']
 MAX_EXAMPLES_TO_SAVE = 200
 
+
 def loglikelihood(log_prob, target):
     """
     Args: log softmax scores (N, C) where N is the batch size
@@ -1866,7 +1867,6 @@ def eval_community(eval_list, models_dict, dev_accuracy_log, logger, flogger, ep
                                            cuda=FLAGS.cuda,
                                            pcd=FLAGS.pcd,
                                            scd=FLAGS.scd)
-                            agent2.load_state_dict(agent1.state_dict())
                             if FLAGS.cuda:
                                 agent2.cuda()
                             if FLAGS.parallel:
@@ -1874,6 +1874,8 @@ def eval_community(eval_list, models_dict, dev_accuracy_log, logger, flogger, ep
                                 agent2 = torch.nn.parallel.DistributedDataParallel(agent2, device_ids=[local_rank],
                                                                                    output_device=local_rank,
                                                                                    find_unused_parameters=True)
+                            agent2.load_state_dict(agent1.state_dict())
+
                         domain = f'In Domain Dev: Agent {i + 1} | Agent {j + 1}, ids [{id(agent1)}]/[{id(agent2)}]: '
                         _, _ = get_and_log_dev_performance(agent1, agent2, FLAGS.dataset_indomain_valid_path, True,
                                                            dev_accuracy_log, logger, flogger, domain, epoch, step,
@@ -1901,7 +1903,6 @@ def eval_community(eval_list, models_dict, dev_accuracy_log, logger, flogger, ep
                                        cuda=FLAGS.cuda,
                                        pcd=FLAGS.pcd,
                                        scd=FLAGS.scd)
-                        agent2.load_state_dict(agent1.state_dict())
                         if FLAGS.cuda:
                             agent2.cuda()
                         if FLAGS.parallel:
@@ -1909,6 +1910,8 @@ def eval_community(eval_list, models_dict, dev_accuracy_log, logger, flogger, ep
                             agent2 = torch.nn.parallel.DistributedDataParallel(agent2, device_ids=[local_rank],
                                                                                output_device=local_rank,
                                                                                find_unused_parameters=True)
+                        agent2.load_state_dict(agent1.state_dict())
+
                     domain = f'In Domain Dev: Agent {i + 1} | Agent {j + 1}, ids [{id(agent1)}]/[{id(agent2)}]: '
                     _, _ = get_and_log_dev_performance(agent1, agent2, FLAGS.dataset_indomain_valid_path, True,
                                                        dev_accuracy_log, logger, flogger, domain, epoch, step, i_batch,
@@ -1954,7 +1957,7 @@ def exchange(a1, a2, exchange_args):
         train: Boolean value indicating training mode (True) or evaluation mode (False).
         break_early: Boolean value. If True, then terminate batched conversation if both agents are satisfied
         test_language_similarity: Boolean: whether to test the language similarity using
-        communication vector arithmetric
+        communication vector arithmetic
 
     Function Args:
         a1: agent1
@@ -1963,8 +1966,8 @@ def exchange(a1, a2, exchange_args):
 
     Returns:
         s: Contains all stop bits [a1, a2]
-            a1 = agent1 (Masks, Values, Probabilties)
-            a2 = agent2 (Masks, Values, Probabilties)
+            a1 = agent1 (Masks, Values, Probabilities)
+            a2 = agent2 (Masks, Values, Probabilities)
         message_1: All agent_1 messages. (Values, Probabilities)
         message_2: All agent_2 messages. (Values, Probabilities)
         y_all = [y_nc, y]
@@ -2053,7 +2056,6 @@ def exchange(a1, a2, exchange_args):
     y_2 = []
     r_1 = []
     r_2 = []
-
 
     # First message (default is 0)
     if not train:
@@ -2307,6 +2309,7 @@ def get_outp(y, masks):
         return outp, negentropy
     else:
         return y[-1], negentropy
+
 
 def calculate_loss_binary(binary_features, binary_probs, rewards, baseline_rewards, entropy_penalty):
     """Calculates the reinforcement learning loss on the agent communication vectors"""
@@ -2706,7 +2709,6 @@ def run(rngen):
                                        cuda=FLAGS.cuda,
                                        pcd=FLAGS.pcd,
                                        scd=FLAGS.scd)
-                        agent2.load_state_dict(agent1.state_dict())
                         if FLAGS.cuda:
                             agent2.cuda()
                         if FLAGS.parallel:
@@ -2714,6 +2716,8 @@ def run(rngen):
                             agent2 = torch.nn.parallel.DistributedDataParallel(agent2, device_ids=[local_rank],
                                                                                output_device=local_rank,
                                                                                find_unused_parameters=True)
+                        agent2.load_state_dict(agent1.state_dict())
+
 
                     if i == 0 and j == 0:
                         # Report in domain development accuracy and store examples TODO: Store examples currently
@@ -3062,7 +3066,6 @@ def run(rngen):
                                cuda=FLAGS.cuda,
                                pcd=FLAGS.pcd,
                                scd=FLAGS.scd)
-                agent2.load_state_dict(agent1.state_dict())
                 if FLAGS.cuda:
                     agent2.cuda()
                 if FLAGS.parallel:
@@ -3070,6 +3073,8 @@ def run(rngen):
                     agent2 = torch.nn.parallel.DistributedDataParallel(agent2, device_ids=[local_rank],
                                                                        output_device=local_rank,
                                                                        find_unused_parameters=True)
+                agent2.load_state_dict(agent1.state_dict())
+
 
             debuglogger.debug(f'Agent 1: {agent_idxs[0]}, Agent 1: {agent_idxs[1]}')
 
@@ -3214,9 +3219,9 @@ def run(rngen):
 
             # Cross entropy loss for each agent
             nll_loss_1 = FLAGS.nll_loss_weight_nc * nll_loss_1_nc + \
-                FLAGS.nll_loss_weight_com * nll_loss_1_com
+                         FLAGS.nll_loss_weight_com * nll_loss_1_com
             nll_loss_2 = FLAGS.nll_loss_weight_nc * nll_loss_2_nc + \
-                FLAGS.nll_loss_weight_com * nll_loss_2_com
+                         FLAGS.nll_loss_weight_com * nll_loss_2_com
             loss_agent1 = nll_loss_1
             loss_agent2 = nll_loss_2
 
@@ -3523,7 +3528,6 @@ def run(rngen):
                                    cuda=FLAGS.cuda,
                                    pcd=FLAGS.pcd,
                                    scd=FLAGS.scd)
-                    agent2.load_state_dict(agent1.state_dict())
                     if FLAGS.cuda:
                         agent2.cuda()
                     if FLAGS.parallel:
@@ -3531,6 +3535,8 @@ def run(rngen):
                         agent2 = torch.nn.parallel.DistributedDataParallel(agent2, device_ids=[local_rank],
                                                                            output_device=local_rank,
                                                                            find_unused_parameters=True)
+                    agent2.load_state_dict(agent1.state_dict())
+
 
                     flogger.Log("Agent {} self communication: id {}".format(i + 1, id(agent)))
                     dev_accuracy_self_com[i], total_accuracy_com = get_and_log_dev_performance(
@@ -3561,7 +3567,6 @@ def run(rngen):
                                             cuda=FLAGS.cuda,
                                             pcd=FLAGS.pcd,
                                             scd=FLAGS.scd)
-                            _agent2.load_state_dict(agent1.state_dict())
                             if FLAGS.cuda:
                                 _agent2.cuda()
                             if FLAGS.parallel:
@@ -3569,6 +3574,7 @@ def run(rngen):
                                 _agent2 = torch.nn.parallel.DistributedDataParallel(_agent2, device_ids=[local_rank],
                                                                                     output_device=local_rank,
                                                                                     find_unused_parameters=True)
+                            _agent2.load_state_dict(agent1.state_dict())
 
                         else:
                             _agent2 = models_dict["agent" + str(j + 1)]
